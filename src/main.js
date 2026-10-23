@@ -33,9 +33,9 @@ function render(now){
   const status=timeline.paused?'paused':timeline.isFinal?(timeline.opened?'opened':timeline.waiting?'waiting':'arriving'):timeline.phase;
   if($('film').dataset.status!==status)$('film').dataset.status=status;
   if($('film').dataset.phase!==timeline.phase)$('film').dataset.phase=timeline.phase;
-  try{world.render({id:scene.id,time:timeline.elapsed+idleTime,progress:timeline.progress,opening:timeline.opening,opened:timeline.opened,action:timeline.action,phase:timeline.phase,transition:timeline.transition,delta:dt,paused:timeline.paused});}catch(error){fail(error);return;}
+  try{world.render({id:scene.id,time:timeline.elapsed+idleTime,progress:timeline.progress,opening:timeline.opening,opened:timeline.opened,action:timeline.action,phase:timeline.phase,continuing:timeline.autoContinue||timeline.pendingAction,transition:timeline.transition,delta:dt,paused:timeline.paused});}catch(error){fail(error);return;}
   if(scene.id!==sceneId){sceneId=scene.id;$('film').dataset.scene=scene.id;}
-  const label=timeline.isFinal?(timeline.opened?'戒指盒已打开':timeline.waiting?'点击打开戒指盒':scene.title):timeline.phase==='leaving'?`${scene.title}，正在转场`:timeline.phase==='settled'?`${scene.title}，点击继续，左滑下一幕，右滑上一幕`:timeline.phase==='acting'?`${scene.title}，动作进行中，再次点击可接着转场，左右滑动可切换场景`:`${scene.title}，${timeline.cue.label}，左滑下一幕，右滑上一幕`;
+  const label=timeline.isFinal?(timeline.opened?'戒指盒已打开':timeline.waiting?'点击打开戒指盒':scene.title):timeline.phase==='leaving'?`${scene.title}，正在转场`:timeline.autoContinue||timeline.pendingAction?`${scene.title}，已触发，动作完成并停留后自动转场，左右滑动可切换场景`:timeline.phase==='settled'?`${scene.title}，点击继续，左滑下一幕，右滑上一幕`:`${scene.title}，${timeline.cue.label}，左滑下一幕，右滑上一幕`;
   if($('world').getAttribute('aria-label')!==label)$('world').setAttribute('aria-label',label);
   const fadeIn=Math.max(0,1-timeline.elapsed/1.15);
   const fadeOut=timeline.interactive?timeline.transition:timeline.isFinal?0:Math.max(0,(timeline.elapsed-scene.duration+1.1)/1.1);

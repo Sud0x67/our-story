@@ -5,37 +5,51 @@ import {SCENES} from '../src/story-data.js';
 import {INTERACTIONS} from '../src/interaction-config.js';
 import {pointerIntent,WheelIntent} from '../src/gestures.js';
 
-for(let index=0;index<18;index++)test(`${SCENES[index].id}: waits for input, completes its action, then waits again`,()=>{
+for(let index=0;index<18;index++)test(`${SCENES[index].id}: one tap completes the action, holds the memory, and advances exactly one chapter`,()=>{
  const t=new FilmTimeline(SCENES,{index});t.tick(10000);
  assert.equal(t.index,index);assert.equal(t.elapsed,INTERACTIONS[t.scene.id].introAt);assert.equal(t.phase,'waiting');
  t.tick(10000);assert.equal(t.index,index);assert.equal(t.action,0);
- assert.equal(t.interact(),true);t.tick(10000);
+ assert.equal(t.interact(),true);t.tick(t.cue.duration);
  assert.equal(t.index,index);assert.equal(t.phase,'settled');assert.equal(t.progress,1);assert.equal(t.action,1);
- t.tick(10000);assert.equal(t.index,index);
- assert.equal(t.interact(),true);t.tick(.4);assert.equal(t.index,index);assert.ok(t.transition>0&&t.transition<1);
+ assert.equal(t.interact(),false);t.tick(2.9);assert.equal(t.index,index);assert.equal(t.phase,'settled');
+ t.tick(.2);assert.equal(t.phase,'leaving');t.tick(.4);assert.ok(t.transition>0&&t.transition<1);
  t.tick(.6);assert.equal(t.index,index+1);assert.equal(t.opened,false);
+ t.tick(10000);assert.equal(t.index,index+1);assert.equal(t.waiting,true);
 });
-test('a swipe completes the action and a transition, then stops in the next chapter',()=>{
- const t=new FilmTimeline(SCENES);t.tick(3);t.interact({through:true});t.tick(10);assert.equal(t.phase,'leaving');
- t.tick(1);assert.equal(t.scene.id,'mountain');t.tick(10000);assert.equal(t.phase,'waiting');assert.equal(t.scene.id,'mountain');
+test('an early tap preserves the full intro and needs no second confirmation',()=>{
+ const t=new FilmTimeline(SCENES);t.tick(3);assert.equal(t.interact(),true);
+ assert.equal(t.phase,'arriving');assert.equal(t.pendingAction,true);assert.equal(t.action,0);
+ t.tick(6);assert.equal(t.elapsed,9);assert.equal(t.action,0);assert.equal(t.interact(),false);
+ t.tick(1);assert.equal(t.phase,'acting');assert.equal(t.elapsed,10);assert.equal(t.pendingAction,false);
+ t.tick(9.5);assert.equal(t.phase,'settled');t.tick(3);assert.equal(t.phase,'leaving');
+ t.tick(1);assert.equal(t.scene.id,'mountain');t.tick(10000);assert.equal(t.phase,'waiting');
 });
-test('extra taps during an action queue one transition without restarting the motion',()=>{
- const t=new FilmTimeline(SCENES);t.interact();t.tick(2);const progress=t.action;
- for(let i=0;i<5;i++)t.interact();assert.equal(t.action,progress);t.tick(20);assert.equal(t.phase,'leaving');assert.equal(t.interact(),false);
+test('extra taps during an action or its final hold do not restart or skip it',()=>{
+ const t=new FilmTimeline(SCENES,{elapsed:10});t.interact();t.tick(2);const progress=t.action;
+ for(let i=0;i<5;i++)assert.equal(t.interact(),false);assert.equal(t.action,progress);
+ t.tick(20);assert.equal(t.phase,'settled');for(let i=0;i<5;i++)assert.equal(t.interact(),false);
+ t.tick(3);assert.equal(t.phase,'leaving');assert.equal(t.interact(),false);
  t.tick(1);assert.equal(t.scene.id,'mountain');assert.equal(t.action,0);
 });
 test('going back transitions once; replay and direct navigation clear all pending actions',()=>{
  const t=new FilmTimeline(SCENES);assert.equal(t.back(),false);t.goto(4);assert.equal(t.back(),true);assert.equal(t.back(),false);t.tick(1);assert.equal(t.index,3);
- t.interact({through:true});t.tick(1);t.goto(0);assert.equal(t.phase,'arriving');assert.equal(t.autoContinue,false);t.tick(1000);assert.equal(t.index,0);
+ t.interact();t.tick(1);t.goto(0);assert.equal(t.phase,'arriving');assert.equal(t.autoContinue,false);assert.equal(t.pendingAction,false);t.tick(1000);assert.equal(t.index,0);
 });
-test('pausing freezes both an action and its outgoing transition',()=>{
- const t=new FilmTimeline(SCENES);t.interact();t.tick(2);t.paused=true;const progress=t.action;t.tick(100);assert.equal(t.action,progress);
- t.paused=false;t.tick(20);t.interact();t.tick(.3);t.paused=true;const fade=t.transition;t.tick(30);assert.equal(t.transition,fade);
+test('pausing freezes the action, final hold and outgoing transition',()=>{
+ const t=new FilmTimeline(SCENES,{elapsed:10});t.interact();t.tick(2);t.paused=true;const progress=t.action;t.tick(100);assert.equal(t.action,progress);
+ t.paused=false;t.tick(20);t.tick(1);t.paused=true;t.tick(100);assert.equal(t.phase,'settled');assert.equal(t.settleElapsed,1);
+ t.paused=false;t.tick(2);t.tick(.3);t.paused=true;const fade=t.transition;t.tick(30);assert.equal(t.transition,fade);
 });
-test('only the final box can open, and every manual chapter can reach it',()=>{
+test('one tap per chapter reaches the final box without opening it',()=>{
  const t=new FilmTimeline(SCENES);assert.equal(t.open(),false);
- for(let i=0;i<18;i++){t.tick(100);t.interact({through:true});t.tick(100);t.tick(1);assert.equal(t.index,i+1);}
+ for(let i=0;i<18;i++){t.tick(100);t.interact();t.tick(100);t.tick(3);t.tick(1);assert.equal(t.index,i+1);}
  assert.equal(t.open(),false);t.tick(19);assert.equal(t.interact(),true);t.tick(5);assert.equal(t.opening,1);assert.equal(t.interact(),false);
+});
+test('navigating away or replaying cancels an early queued tap',()=>{
+ const t=new FilmTimeline(SCENES);t.interact();assert.equal(t.pendingAction,true);
+ t.navigate(1);t.tick(1);assert.equal(t.pendingAction,false);t.tick(100);assert.equal(t.phase,'waiting');
+ t.navigate(-1);t.tick(1);t.tick(100);assert.equal(t.phase,'waiting');assert.equal(t.action,0);
+ t.interact();assert.equal(t.pendingAction,true);t.restart();assert.equal(t.pendingAction,false);t.tick(100);assert.equal(t.phase,'waiting');
 });
 test('touch directions, small drags and multi-touch have distinct navigation behavior',()=>{
  const a={x:300,y:300};assert.equal(pointerIntent(a,{x:303,y:302}),'tap');

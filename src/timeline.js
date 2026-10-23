@@ -17,21 +17,23 @@ export class FilmTimeline {
     this.index=clamp(index,0,this.scenes.length-1);this.opened=false;this.openElapsed=0;
     this.elapsed=clamp(elapsed,0,this.isFinal?this.scene.waitAt:this.scene.duration-(this.interactive?0:.001));
     this.actionElapsed=0;this.actionDone=this.interactive&&!this.isFinal&&this.elapsed>=this.scene.duration;
-    this.actionStart=this.elapsed;this.exitElapsed=0;this.autoContinue=false;this.destination=null;
+    this.actionStart=this.elapsed;this.exitElapsed=0;this.settleElapsed=0;this.autoContinue=false;this.pendingAction=false;this.destination=null;
     this.phase=this.isFinal?'arriving':this.actionDone?'settled':this.interactive&&this.elapsed>=this.cue.introAt?'waiting':'arriving';
   }
   interact({through=false}={}){
     if(this.isFinal)return through?false:this.open();
     if(!this.interactive){this.goto(this.index+1);return true;}
-    if(this.phase==='leaving')return false;
+    if(this.phase==='leaving'||this.phase==='acting'||this.autoContinue||this.pendingAction)return false;
     this.paused=false;
-    if(this.phase==='acting'){this.autoContinue=true;return true;}
     if(this.phase==='settled'){this.leave(this.index+1);return true;}
-    this.phase='acting';this.actionStart=this.elapsed;this.actionElapsed=0;this.autoContinue=through;return true;
+    if(this.elapsed<this.cue.introAt){this.phase='arriving';this.pendingAction=true;return true;}
+    this.beginAction();return true;
   }
+  beginAction(){this.phase='acting';this.actionStart=this.elapsed;this.actionElapsed=0;this.pendingAction=false;this.autoContinue=true;}
   leave(index){
     const phase=this.phase==='settled'?'settled':'waiting';
     this.snapshots.set(this.index,{elapsed:this.elapsed,phase,actionDone:this.actionDone,opened:this.opened,openElapsed:this.openElapsed});
+    this.pendingAction=false;this.autoContinue=false;
     this.phase='leaving';this.exitElapsed=0;this.destination=clamp(index,0,this.scenes.length-1);
   }
   navigate(direction){
@@ -58,10 +60,13 @@ export class FilmTimeline {
       if(this.phase==='acting'){
         this.actionElapsed=Math.min(this.cue.duration,this.actionElapsed+dt);
         this.elapsed=this.actionStart+(this.scene.duration-this.actionStart)*(this.cue.pace==='linear'?this.action:ease(this.action));
-        if(this.actionElapsed>=this.cue.duration){this.elapsed=this.scene.duration;this.actionDone=true;if(this.autoContinue)this.leave(this.index+1);else this.phase='settled';}
+        if(this.actionElapsed>=this.cue.duration){this.elapsed=this.scene.duration;this.actionDone=true;this.phase='settled';this.settleElapsed=0;}
+      }else if(this.phase==='settled'&&this.autoContinue){
+        this.settleElapsed+=dt;
+        if(this.settleElapsed>=3)this.leave(this.index+1);
       }else if(this.phase==='arriving'){
         this.elapsed=Math.min(this.cue.introAt,this.elapsed+dt);
-        if(this.elapsed>=this.cue.introAt)this.phase='waiting';
+        if(this.elapsed>=this.cue.introAt){if(this.pendingAction)this.beginAction();else this.phase='waiting';}
       }
       return false;
     }

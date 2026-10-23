@@ -30,7 +30,7 @@ export function createInteractionEffects(setting,id){
   const anchor=setting.interactionAnchor?.();origin.position.copy(anchor||new THREE.Vector3(...cue.anchor));
   badge.quaternion.copy(camera.quaternion);
   const waiting=state.phase==='waiting'||state.phase==='settled';
-  badge.visible=!active&&state.phase!=='leaving'&&!state.opened&&!(state.opening>0)&&(id!=='ring'||state.progress>=1);
+  badge.visible=!active&&!state.continuing&&state.phase!=='leaving'&&!state.opened&&!(state.opening>0)&&(id!=='ring'||state.progress>=1);
   const strength=waiting?.78:.45;
   halo.material.opacity=strength+Math.sin(t*1.7)*.06;disc.material.opacity=waiting?.68:.4;
   center.material.opacity=strength;dot.material.opacity=strength;hint.material.opacity=strength;
@@ -44,7 +44,7 @@ export function createInteractionEffects(setting,id){
   }
   for(const [i,r]of rings.entries()){
    const p=(a+i*.23)%1;
-   if(water){r.rotation.set(-Math.PI/2,0,0);r.position.set(0,-.12,i*.1);r.scale.setScalar(1+p*4);}
+   if(water){r.rotation.set(-Math.PI/2,0,0);r.position.set(0,(setting.waterHeight??.065)-origin.position.y,i*.1);r.scale.setScalar(1+p*4);}
    else if(cue.kind==='steam'){r.rotation.set(.5,0,a*2+i);r.position.set(Math.sin(a*5+i)*.15,a*1.4+i*.2,0);r.scale.set(.55+p*.6,.2,1);}
    else{r.quaternion.copy(camera.quaternion);r.position.set(0,i*.1,0);r.scale.setScalar(.5+p*4);}
    r.material.opacity=active?pulse*(1-p)*.5:0;

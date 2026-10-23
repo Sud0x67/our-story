@@ -4,19 +4,19 @@ import {FilmTimeline} from '../src/timeline.js';
 import {SCENES} from '../src/story-data.js';
 
 for(let index=0;index<18;index++)test(`${SCENES[index].id}: next navigation leaves immediately even during the scene action`,()=>{
- const t=new FilmTimeline(SCENES,{index});t.interact();t.tick(.4);
+ const t=new FilmTimeline(SCENES,{index});t.tick(100);t.interact();t.tick(.4);
  const progress=t.action;assert.ok(progress>0&&progress<1);
  assert.equal(t.navigate(1),true);assert.equal(t.phase,'leaving');assert.equal(t.autoContinue,false);
  assert.equal(t.navigate(1),false);t.tick(1);assert.equal(t.index,index+1);
 });
 test('returning to a completed memory restores its completed pose and caption',()=>{
- const t=new FilmTimeline(SCENES);t.interact();t.tick(20);const caption=t.caption().text;
+ const t=new FilmTimeline(SCENES);t.tick(100);t.interact();t.tick(20);const caption=t.caption().text;
  assert.equal(t.phase,'settled');t.navigate(1);t.tick(1);t.tick(3);t.navigate(-1);t.tick(1);
  assert.equal(t.index,0);assert.equal(t.phase,'settled');assert.equal(t.progress,1);assert.equal(t.action,1);assert.equal(t.caption().text,caption);
  t.tick(100);assert.equal(t.index,0);
 });
 test('leaving during an action cancels pending advancement and returns to the same story position',()=>{
- const t=new FilmTimeline(SCENES);t.interact({through:true});t.tick(2);const elapsed=t.elapsed;
+ const t=new FilmTimeline(SCENES);t.tick(100);t.interact();t.tick(2);const elapsed=t.elapsed;
  t.navigate(1);t.tick(1);t.navigate(-1);t.tick(1);
  assert.equal(t.elapsed,elapsed);assert.equal(t.phase,'waiting');assert.equal(t.autoContinue,false);t.tick(100);assert.equal(t.elapsed,elapsed);
  t.interact();t.tick(20);assert.equal(t.phase,'settled');assert.equal(t.index,0);

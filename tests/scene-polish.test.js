@@ -7,6 +7,7 @@ import {shop,museum} from '../src/scenes/indoors.js';
 import {mountainMotion} from '../src/scenes/choreography.js';
 import {FilmTimeline} from '../src/timeline.js';
 import {SCENES} from '../src/story-data.js';
+import {crabs} from '../src/scenes/outdoors.js';
 
 test('bicycles and their riders keep a visible gap along the entire curved ride',()=>{
  const scene=cycling();
@@ -60,5 +61,23 @@ test('both framed photos stay fully inside portrait and landscape views',async()
   for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){
    const point=new Vector3(x,y,z).project(camera);assert.ok(Math.abs(point.x)<.96&&Math.abs(point.y)<.96,'photo cropped at '+width+'×'+height);
   }
+ }
+});
+
+test('the crab bucket stays in the hand, clears the body and lifts smoothly off the mudflat',()=>{
+ const scene=crabs();let previous;
+ for(let frame=0;frame<=180;frame++){
+  scene.update({time:frame/10,progress:frame/180});scene.root.updateMatrixWorld(true);
+  const {actors,pail,held,tool}=scene.contacts,grip=held.getWorldPosition(new Vector3()),hand=actors[1].arms[1].hand.getWorldPosition(new Vector3());
+  assert.ok(grip.distanceTo(hand)<1e-8,'hand detached from handle');
+  const shell=new Box3().setFromObject(pail.userData.shell,true);
+  assert.ok(shell.min.y>=.0119);assert.equal(shell.intersectsBox(new Box3().setFromObject(actors[1].torso,true)),false);
+  assert.equal(tool.parent,actors[0].arms[0].hand);
+  if(previous){assert.ok(pail.position.y>=previous.y);assert.ok(pail.position.distanceTo(previous)<.008);}
+  previous=pail.position.clone();
+ }
+ assert.ok(Math.abs(previous.y-.222)<1e-8);
+ for(const caught of scene.contacts.pail.userData.catchCrabs){
+  assert.ok(Math.hypot(caught.position.x,caught.position.z)<.2);assert.equal(caught.position.y,.05);
  }
 });

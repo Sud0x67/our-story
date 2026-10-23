@@ -70,7 +70,7 @@ export function createWorld(container,{onError}={}) {
   return {
     render(state){
       if(disposed)return;if(state.id!==currentId)show(state.id,state);
-      const stamp=`${state.id}:${state.time}:${state.progress}:${state.opening}:${state.action}:${state.phase}:${state.transition}`;
+      const stamp=`${state.id}:${state.time}:${state.progress}:${state.opening}:${state.opened}:${state.action}:${state.phase}:${state.continuing}:${state.transition}`;
       const changed=stamp!==lastState;
       if(changed||!state.paused){current.update?.(state);current.root.position.y=0;}
       lastState=stamp;

@@ -27,3 +27,25 @@ test('the flipped camping card clears the tabletop throughout the interaction',(
   assert.ok(card);assert.ok(new Box3().setFromObject(card).min.y>=.949,`frame ${frame}: card intersects table`);
  }
 });
+
+test('a triggered memory hides its tap marker through the action and final hold',()=>{
+ const effects=createInteractionEffects(crabs(),'crabs'),camera=new OrthographicCamera();
+ for(const state of [
+  {phase:'waiting',continuing:false,visible:true},
+  {phase:'arriving',continuing:true,visible:false},
+  {phase:'acting',continuing:true,visible:false},
+  {phase:'settled',continuing:true,visible:false},
+  {phase:'leaving',continuing:false,visible:false},
+  {phase:'settled',continuing:false,visible:true},
+ ]){effects.update({time:5,progress:.5,action:.5,...state},camera);assert.equal(effects.badge.visible,state.visible);}
+});
+
+test('water interaction rings lie on the water surface rather than floating around the bucket',()=>{
+ for(const [id,factory,height]of [['crabs',crabs,.024],['swans',swans,.065],['beach',beach,.065]]){
+  const scene=factory(),effects=createInteractionEffects(scene,id),camera=new OrthographicCamera();
+  scene.update({time:10,progress:.8});effects.update({time:10,progress:.8,action:.5,phase:'acting',continuing:true},camera);scene.root.updateMatrixWorld(true);
+  const rings=[];effects.root.traverse(o=>{if(o.geometry?.type==='TorusGeometry'&&o.geometry.parameters.tube===.009)rings.push(o);});
+  assert.equal(rings.length,3);
+  for(const ring of rings)assert.ok(Math.abs(ring.getWorldPosition(new Vector3()).y-height)<1e-8);
+ }
+});

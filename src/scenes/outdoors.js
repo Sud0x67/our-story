@@ -1,6 +1,6 @@
 import { THREE, palette, material, mesh, box, ball, cylinder, line, group, tube, plane, base, tree, grassTuft, flower, table, chair, cup, walkway, smooth, mix, clamp, themes, sceneResult } from './kit.js';
 import { seatOn } from './contacts.js';
-import { couple, person, stroll } from './characters.js';
+import { couple, person, stroll, reachHand } from './characters.js';
 import { natureDetails } from './landscape.js';
 
 function crab(parent,position,scale=1){
@@ -14,12 +14,22 @@ function crab(parent,position,scale=1){
   }return g;
 }
 function bucket(parent,position){
-  const g=group(parent,position);const bucketMat=new THREE.MeshStandardMaterial({color:'#b3c8ba',side:THREE.DoubleSide,roughness:.7});
-  mesh(g,new THREE.CylinderGeometry(.34,.26,.56,12,1,true),bucketMat,[0,.28,0]);
-  cylinder(g,.26,.26,.035,'#94b0a1',[0,.025,0],12);
-  const rim=mesh(g,new THREE.TorusGeometry(.34,.025,5,24),'#d2d6bc',[0,.56,0]);rim.rotation.x=Math.PI/2;
-  tube(g,[[-.33,.48,0],[-.34,.87,0],[0,.99,0],[.34,.87,0],[.33,.48,0]],.018,'#6c8777');
-  for(let i=0;i<5;i++)crab(g,[Math.cos(i*2.4)*.15,.1+i*.055,Math.sin(i*2.4)*.13],.64);
+  const g=group(parent,position);
+  const profile=[[0,0],[.25,0],[.264,.035],[.33,.46],[.307,.46],[.241,.045],[0,.045]].map(([x,y])=>new THREE.Vector2(x,y));
+  const shell=mesh(g,new THREE.LatheGeometry(profile,28),'#abc2b6');shell.userData.bucketShell=true;
+  const rim=mesh(g,new THREE.TorusGeometry(.319,.018,8,32),'#d2d6bc',[0,.46,0]);rim.rotation.x=Math.PI/2;
+  const handle=group(g,[0,.435,0]);
+  const arc=Array.from({length:17},(_,i)=>{const angle=-Math.PI/2+i*Math.PI/16;return [Math.sin(angle)*.32,Math.cos(angle)*.35,0];});
+  tube(handle,arc,.014,'#6c8777');
+  for(const side of [-1,1])ball(handle,.025,'#708e7e',[side*.32,0,0],1);
+  const grip=cylinder(handle,.029,.029,.15,'#d5c7a6',[0,.35,0],12);grip.rotation.z=Math.PI/2;
+  const held=group(g,[0,.785,0]);
+  const water=mesh(g,new THREE.CircleGeometry(.248,28),'#8ba99e',[0,.072,0],{transparent:true,opacity:.36,depthWrite:false});water.rotation.x=-Math.PI/2;water.castShadow=false;
+  const catchCrabs=[];
+  for(const [i,[x,z]]of [[-.12,.075],[.11,.08],[-.1,-.105],[.12,-.1],[0,-.005]].entries()){
+    const caught=crab(g,[x,.05,z],.3);caught.rotation.y=i*1.7;catchCrabs.push(caught);
+  }
+  g.userData.held=held;g.userData.catchCrabs=catchCrabs;g.userData.shell=shell;
   return g;
 }
 export function crabs(){
@@ -30,22 +40,24 @@ export function crabs(){
     const m=mesh(root,new THREE.CircleGeometry(.5+i%3*.22,9),'#93a89a',[-5+(i%4)*2.3,.035,-2+Math.floor(i/4)*3],{roughness:.4});m.rotation.x=-Math.PI/2;m.scale.y=.6;puddles.push(m);
   }
   const smallCrabs=[];
-  for(let i=0;i<9;i++)smallCrabs.push(crab(root,[-4+(i%4)*1.5,.055,-2+Math.floor(i/4)*1.8],.9));
-  const pair=couple(root,[[-1.1,.04,1.6],[.25,.04,1.6]],{popo:{coat:'#c9b798'},xiaohe:{coat:'#a8b9b8'}});
-  const pail=bucket(root,[1.2,.05,1.5]);
-  for(const [i,c]of[pair.p,pair.h].entries()){
-    const tool=group(c.arms[i].hand,[0,-.04,.1]);cylinder(tool,.012,.012,.65,'#b9b69b',[0,0,.2],4).rotation.x=Math.PI/2;
-    const end=box(tool,[.1,.025,.16],'#a9aba0',[0,0,.55]);
+  for(let i=0;i<9;i++){
+    const c=crab(root,[-4+(i%4)*1.5,0,-2+Math.floor(i/4)*1.8],.9);
+    c.position.y+=.012-new THREE.Box3().setFromObject(c).min.y;smallCrabs.push(c);
   }
+  const pair=couple(root,[[-1.1,.03,1.6],[.25,.0288,1.6]],{popo:{coat:'#c9b798'},xiaohe:{coat:'#a8b9b8'}});
+  const pail=bucket(root,[.9,.012,1.89]);
+  const tool=group(pair.p.arms[0].hand,[0,-.04,.1]);cylinder(tool,.012,.012,.65,'#b9b69b',[0,0,.2],4).rotation.x=Math.PI/2;
+  box(tool,[.1,.025,.16],'#a9aba0',[0,0,.55]);
   natureDetails(root,'crabs');
   const crabOrigins=smallCrabs.map(c=>c.position.x);
   return sceneResult(root,({time,progress})=>{
-    const lift=smooth((progress-.48)/.26);pair.idle(time);
-    pair.p.pose({lean:1-lift,reach:.25});pair.h.pose({lean:1-lift,reach:lift*.6});
+    const lift=smooth((progress-.48)/.26);
+    pair.p.pose({lean:(1-lift)*.55,reach:.18});pair.h.pose({lean:(1-lift)*.35});pair.idle(time);
     pair.p.root.rotation.y=.25;pair.h.root.rotation.y=-.25;
-    pail.position.set(mix(1.2,.8,lift),.05+lift*.58,1.5);pair.h.arms[1].shoulder.rotation.x=-lift*.75;
+    pail.position.set(mix(.9,.94,lift),.012+lift*.21,mix(1.89,1.9,lift));
+    const held=pail.userData.held.getWorldPosition(new THREE.Vector3());reachHand(pair.h,1,held);
     smallCrabs.forEach((c,i)=>{c.position.x=crabOrigins[i]+Math.sin(time*.8+i)*.075;c.rotation.y=Math.sin(time*.3+i)*.15;});
-  },{theme:themes.dusk,view:{from:[13,11,18],to:[8,6.5,14],target:[0,.8,0],endTarget:[.4,1,1.5],span:12.1,endSpan:7.8}});
+  },{contacts:{actors:[pair.p,pair.h],pail,held:pail.userData.held,smallCrabs,tool},waterHeight:.024,interactionAnchor:()=>pail.localToWorld(new THREE.Vector3(0,.9,0)),theme:themes.dusk,view:{from:[13,11,18],to:[5.8,11,10.5],target:[0,.8,0],endTarget:[.3,.85,1.65],span:12.1,endSpan:7.5}});
 }
 
 export function stars(){
