@@ -14,7 +14,7 @@ export function playbackOptions(search, scenes) {
   return {
     index: resolveSceneIndex(params.get('scene'), scenes),
     elapsed: Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0,
-    speed: Number.isFinite(speed) && speed > 0 ? Math.max(.25, Math.min(60, speed)) : 1,
+    speed: Number.isFinite(speed) && speed > 0 ? Math.max(0.25, Math.min(60, speed)) : 1,
     paused: params.has('paused'),
     interactive: !params.has('autoplay'),
   };

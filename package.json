@@ -7,7 +7,9 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "format": "prettier --write \"src/**/*.{js,css}\" \"tests/**/*.js\" \"*.html\" vite.config.js package.json .prettierrc.json \".github/workflows/*.yml\"",
+    "format:check": "prettier --check \"src/**/*.{js,css}\" \"tests/**/*.js\" \"*.html\" vite.config.js package.json .prettierrc.json \".github/workflows/*.yml\""
   },
   "dependencies": {
     "marked": "^16.4.0",

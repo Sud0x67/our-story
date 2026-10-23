@@ -6,7 +6,12 @@ import { applyPageTheme } from './page-theme.js';
 // The palette is generated from the same art direction used by the running scene.
 export function createThemeBootstrap(scenes) {
   const ids = scenes.map(({ id }) => ({ id }));
-  const palettes = Object.fromEntries(['clay', 'paper'].map((look) => [look, scenes.map(({ id }) => ({ ...scenePalette(look, id), look, scene: id }))]));
+  const palettes = Object.fromEntries(
+    ['clay', 'paper'].map((look) => [
+      look,
+      scenes.map(({ id }) => ({ ...scenePalette(look, id), look, scene: id })),
+    ]),
+  );
   function bootstrap(resolveIndex, chooseLook, applyTheme, scenes, palettes) {
     const params = new URLSearchParams(location.search);
     const look = chooseLook(location.search);
