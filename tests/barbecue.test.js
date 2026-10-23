@@ -14,7 +14,7 @@ const update = (scene, timeline) => {
   scene.root.updateMatrixWorld(true);
 };
 
-test('one barbecue click raises both beers, touches rims, returns them and replays from the table', () => {
+test('one barbecue click raises both beers and holds the toast through the fade; replay starts at the table', () => {
   const scene = barbecue(),
     timeline = new FilmTimeline(SCENES, { index });
   update(scene, timeline);
@@ -24,7 +24,7 @@ test('one barbecue click raises both beers, touches rims, returns them and repla
   assert.equal(timeline.phase, 'waiting');
   assert.deepEqual(cupPositions(scene), resting, 'the toast must wait for a click');
   timeline.interact();
-  timeline.tick(timeline.cue.duration / 2);
+  timeline.tick(timeline.cue.duration * 0.95);
   update(scene, timeline);
   const [left, right] = scene.contacts.mugs.map((mug) => new Box3().setFromObject(mug.root, true));
   assert.ok(Math.abs(left.max.x - right.min.x) < 0.0001, 'the rims should touch');
@@ -36,13 +36,26 @@ test('one barbecue click raises both beers, touches rims, returns them and repla
   assert.deepEqual(cupPositions(scene), raised, 'pausing must freeze the toast');
   timeline.interact();
   assert.equal(timeline.phase, 'acting', 'resume must preserve the current action');
-  timeline.tick(timeline.cue.duration / 2);
+  timeline.tick(timeline.cue.duration - timeline.actionElapsed);
   update(scene, timeline);
   assert.equal(timeline.phase, 'settled');
-  assert.deepEqual(cupPositions(scene), resting, 'both beers should return to the table');
+  assert.deepEqual(cupPositions(scene), raised, 'the beers must stay raised after clinking');
   assert.equal(timeline.needsInput, false, 'the completed toast needs no extra click');
-  timeline.tick(3);
-  timeline.tick(1);
+  for (let second = 0; second < 3; second++) {
+    timeline.tick(1);
+    update(scene, timeline);
+    assert.deepEqual(cupPositions(scene), raised, 'the toast must hold until the transition');
+    for (const [i, character] of scene.contacts.actors.entries())
+      assert.ok(
+        world(character.arms[i ? 0 : 1].hand).distanceTo(world(scene.contacts.mugs[i].grip)) <
+          0.005,
+      );
+  }
+  assert.equal(timeline.phase, 'leaving');
+  timeline.tick(0.5);
+  update(scene, timeline);
+  assert.deepEqual(cupPositions(scene), raised, 'fading must not lower the mugs');
+  timeline.tick(0.5);
   assert.equal(timeline.index, index + 1);
   timeline.navigate(-1);
   timeline.tick(1);
@@ -74,7 +87,7 @@ test('the whole toast keeps hands on handles, rims apart and arms and mugs clear
         })),
     );
     for (const [i, character] of actors.entries()) {
-      if (timeline.action >= 0.16 && timeline.action <= 0.87)
+      if (timeline.action >= 0.32)
         assert.ok(
           world(character.arms[i ? 0 : 1].hand).distanceTo(world(mugs[i].grip)) < 0.005,
           'a hand loses its handle while carrying the mug',

@@ -424,9 +424,9 @@ export function barbecue() {
     root,
     ({ time, progress }) => {
       const a = clamp((progress - 5 / 12) / (1 - 5 / 12));
-      const lift = smooth((a - 0.16) / 0.22) * (1 - smooth((a - 0.64) / 0.23));
-      const together = smooth((a - 0.38) / 0.08) * (1 - smooth((a - 0.56) / 0.08));
-      const hold = smooth(a / 0.16) * (1 - smooth((a - 0.87) / 0.13));
+      const lift = smooth((a - 0.32) / 0.44);
+      const together = smooth((a - 0.76) / 0.16);
+      const hold = smooth(a / 0.32);
       pair.p.pose({ sit: 1 });
       pair.h.pose({ sit: 1 });
       pair.p.body.position.z = pair.h.body.position.z = lift * 0.1;
