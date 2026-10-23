@@ -1,0 +1,24 @@
+// Intro timestamps use the original scene clock. They stop before the meaningful action.
+const cues={
+ river:[10,9.5,[2.45,.15,3.8],'petals','点击坐到草坪上聊天'],
+ mountain:[8,8.5,[-.03,2.95,1.3],'heart','点击牵手，继续上山'],
+ bar:[5,4,[0,1.32,.4],'toast','点击点亮杯中的微光'],
+ live:[6,4,[0,2,-2.5],'music','点击让歌声化作声波'],
+ museum:[4,4.5,[0,2,1.15],'photo','点击拿起面具，留下合照'],
+ skewers:[5,4,[0,1.65,.6],'steam','点击让热气升起'],
+ crabs:[6,4.5,[1.2,1,1.5],'ripple','点击看看桶里的收获'],
+ stars:[7,5,[1.65,1.6,-.45],'meteor','点击让流星划过银河'],
+ shop:[5,4.5,[.65,1.7,1.4],'petals','点击挑选小玩偶，看看合照'],
+ cycling:[5,5,[2,3.7,1.5],'wind','点击跟着气球继续骑行'],
+ camp:[6,4,[0,1.3,.45],'cards','点击翻一张牌'],
+ concert:[6,4,[0,2.5,-4.1],'music','点击点亮舞台的灯光'],
+ driving:[6,5,[0,1.8,1.2],'wind','点击继续向前开'],
+ barbecue:[5,4,[0,1.45,.65],'steam','点击让烟火气升起'],
+ swans:[6,4.5,[0,.22,-1.6],'ripple','点击跟随小天鹅的水纹'],
+ forest:[5,5,[0,2.7,0],'leaves','点击沿着落叶继续走'],
+ coffee:[5,4,[.2,1.4,.5],'steam','点击看看三杯手冲'],
+ beach:[6,4.5,[0,.18,-.45],'wave','点击让海浪靠近岸边'],
+ ring:[19,4.5,[0,1.2,0],'ring','点击打开戒指盒'],
+};
+export const INTERACTIONS=Object.fromEntries(Object.entries(cues).map(([id,[introAt,duration,anchor,kind,label]])=>[id,{introAt,duration,anchor,kind,label}]));
+export const sceneCue=id=>INTERACTIONS[id]||{introAt:5,duration:4,anchor:[0,1,0],kind:'petals',label:'点击继续这段回忆'};

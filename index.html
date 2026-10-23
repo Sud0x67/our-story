@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#172a22" />
+  <meta name="description" content="坡坡与小禾的故事，从初识，到一起走向往后的日子。" />
+  <title>坡坡与小禾 · 我们的故事</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/src/film.css" />
+</head>
+<body>
+  <main id="film" tabindex="0" aria-label="坡坡与小禾的全屏三维故事" aria-describedby="keyboard-help">
+    <div id="world" aria-label="点击或滑动，走进我们的故事"></div>
+    <div id="vignette" aria-hidden="true"></div>
+    <div id="transition" aria-hidden="true"></div>
+    <p id="caption" class="film-caption" aria-live="polite"></p>
+    <p id="proposal" aria-live="polite"></p>
+    <div id="loading" aria-label="正在准备故事"><span></span></div>
+    <p id="world-error" hidden>这个浏览器暂时无法显示 3D 场景，请使用支持 WebGL 的浏览器。</p>
+    <p id="keyboard-help" class="sr-only">每幕会在关键瞬间停下等待。点击画面触发当前回忆的动作，再点击进入下一幕；左滑或上滑可以完成动作并转场，右滑或下滑返回上一幕。鼠标滚轮和方向键也可切换。右键拖动或双指拖动观察场景。空格暂停，Enter 等同点击，T 开关字幕，M 开关音乐，F 全屏，R 重播，End 前往戒指盒。最后点击打开盒子。</p>
+  </main>
+  <noscript>请启用 JavaScript 来观看我们的故事。</noscript>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
