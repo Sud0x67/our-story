@@ -17,13 +17,14 @@ import {
   revealPicture,
   steam,
   textSign,
+  clamp,
   smooth,
   mix,
   sceneResult,
   themes,
 } from './kit.js';
-import { seatOn } from './contacts.js';
-import { couple, person } from './characters.js';
+import { seatOn, worldPoint } from './contacts.js';
+import { couple, person, reachHand, localHand } from './characters.js';
 
 function diners(root, options = {}) {
   chair(root, [-0.72, 0, -1.02]);
@@ -49,6 +50,16 @@ function bottle(parent, position, color = '#667b50') {
   cylinder(g, 0.05, 0.05, 0.035, '#bc9e6a', [0, 0.6, 0], 8);
   box(g, [0.13, 0.17, 0.02], '#d8c9a3', [0, 0.25, 0.105]);
   return g;
+}
+function beerMug(parent, side) {
+  const root = group(parent, [side * 0.4, 0.951, -0.16]);
+  cylinder(root, 0.125, 0.105, 0.3, '#cfad72', [0, 0.15, 0], 16);
+  cylinder(root, 0.112, 0.112, 0.018, '#e9d7a9', [0, 0.294, 0], 16);
+  const rim = mesh(root, new THREE.TorusGeometry(0.12, 0.012, 6, 24), '#e7d8b7', [0, 0.3, 0]);
+  rim.rotation.x = Math.PI / 2;
+  mesh(root, new THREE.TorusGeometry(0.075, 0.023, 6, 20), '#dcca9f', [side * 0.17, 0.15, 0]);
+  const grip = group(root, [side * 0.23, 0.105, 0]);
+  return { root, grip, side };
 }
 function pendant(root, x, y, z, color = '#dcc49c') {
   tube(
@@ -386,8 +397,8 @@ export function shop() {
 
 export function barbecue() {
   const root = indoor({ floor: '#87745d', wall: '#8a785d' });
-  table(root, [0, 0, 0.65], 3.1, 1.9);
-  const pair = diners(root);
+  const diningTable = table(root, [0, 0, 0.65], 3.1, 1.9);
+  const pair = diners(group(root, [0, 0, 0.24]));
   textSign(root, '新疆和田玉烧烤', 4.4, 0.7, [-0.2, 3.1, -4.27], '#566753', '#e8d4a0');
   textSign(root, '阿里烧烤', 1.5, 0.4, [4.7, 2.8, -4.25], '#765842', '#d9c199');
   for (const x of [-4.7, 4.7])
@@ -406,19 +417,50 @@ export function barbecue() {
   }
   bottle(root, [-1.1, 0.951, 0.6], '#7a8353');
   bottle(root, [1.05, 0.951, 0.6], '#7a8353');
-  cup(root, [-0.75, 0.951, 0.04], '#c7bc94', '#c2944b', 0.9);
-  cup(root, [0.75, 0.951, 0.04], '#c7bc94', '#c2944b', 0.9);
+  const mugs = [beerMug(root, -1), beerMug(root, 1)];
   pendant(root, -2.7, 2.9, -1.3);
   pendant(root, 2.4, 2.7, 0.8);
   return sceneResult(
     root,
-    ({ time }) => {
+    ({ time, progress }) => {
+      const a = clamp((progress - 5 / 12) / (1 - 5 / 12));
+      const lift = smooth((a - 0.16) / 0.22) * (1 - smooth((a - 0.64) / 0.23));
+      const together = smooth((a - 0.38) / 0.08) * (1 - smooth((a - 0.56) / 0.08));
+      const hold = smooth(a / 0.16) * (1 - smooth((a - 0.87) / 0.13));
+      pair.p.pose({ sit: 1 });
+      pair.h.pose({ sit: 1 });
+      pair.p.body.position.z = pair.h.body.position.z = lift * 0.1;
       pair.idle(time);
-      pair.p.head.rotation.y = 0.17;
-      pair.h.head.rotation.y = -0.17;
+      pair.p.head.rotation.y = 0.17 + lift * 0.1;
+      pair.h.head.rotation.y = -0.17 - lift * 0.1;
+      pair.p.head.rotation.x = pair.h.head.rotation.x = lift * 0.04;
+      for (const [i, character] of [pair.p, pair.h].entries()) {
+        const mug = mugs[i];
+        mug.root.position.set(
+          mug.side * mix(0.4, mix(0.25, 0.132, together), lift),
+          0.951 + lift * 0.2,
+          mix(-0.16, -0.08, lift),
+        );
+        localHand(character, i ? 1 : 0, [mug.side * 0.28, 0.32, 0.08]);
+        const resting = worldPoint(character.root, [-mug.side * 0.25, 0.34, 0.1]);
+        const grip = worldPoint(mug.grip, [0, 0, 0]);
+        // Clear the table edge before reaching forward, without passing through the chin.
+        const forward = smooth((hold - 0.35) / 0.65);
+        const hand = new THREE.Vector3(
+          mix(resting.x, grip.x, forward),
+          mix(resting.y, 1.04, smooth(hold / 0.4)) + (grip.y - 1.04) * smooth((hold - 0.65) / 0.35),
+          mix(resting.z, grip.z, forward),
+        );
+        const elbow = worldPoint(character.root, [
+          -mug.side * 0.65,
+          mix(0.35, 0.85, smooth(hold / 0.5)),
+          0.08,
+        ]);
+        reachHand(character, i ? 0 : 1, hand, 1, elbow);
+      }
     },
     {
-      contacts: { actors: [pair.p, pair.h] },
+      contacts: { actors: [pair.p, pair.h], mugs, table: diningTable },
       theme: themes.warm,
       view: {
         from: [10, 8, 16],

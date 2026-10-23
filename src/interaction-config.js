@@ -13,7 +13,7 @@ const cues = {
   camp: [6, 4, [0, 1.3, 0.45], 'cards', '点击翻一张牌'],
   concert: [6, 4, [0, 2.5, -4.1], 'music', '点击点亮舞台的灯光'],
   driving: [6, 8.5, [0, 1.8, 1.2], 'wind', '点击继续向前开'],
-  barbecue: [5, 4, [0, 1.45, 0.65], 'steam', '点击让烟火气升起'],
+  barbecue: [5, 6, [0, 1.45, -0.1], 'toast', '点击举杯，一起干杯'],
   swans: [6, 4.5, [0, 0.22, -1.6], 'ripple', '点击跟随小天鹅的水纹'],
   forest: [5, 5, [0, 2.7, 0], 'leaves', '点击沿着落叶继续走'],
   coffee: [5, 4, [0.2, 1.4, 0.5], 'steam', '点击看看三杯手冲'],
@@ -23,7 +23,14 @@ const cues = {
 export const INTERACTIONS = Object.fromEntries(
   Object.entries(cues).map(([id, [introAt, duration, anchor, kind, label]]) => [
     id,
-    { introAt, duration, anchor, kind, label, pace: id === 'mountain' ? 'linear' : 'eased' },
+    {
+      introAt,
+      duration,
+      anchor,
+      kind,
+      label,
+      pace: ['mountain', 'barbecue'].includes(id) ? 'linear' : 'eased',
+    },
   ]),
 );
 export const sceneCue = (id) =>
