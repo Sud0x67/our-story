@@ -21,6 +21,7 @@ export class FilmTimeline {
     this.phase=this.isFinal?'arriving':this.actionDone?'settled':this.interactive&&this.elapsed>=this.cue.introAt?'waiting':'arriving';
   }
   interact({through=false}={}){
+    if(this.paused){this.paused=false;return true;}
     if(this.isFinal)return through?false:this.open();
     if(!this.interactive){this.goto(this.index+1);return true;}
     if(this.phase==='leaving'||this.phase==='acting'||this.autoContinue||this.pendingAction)return false;

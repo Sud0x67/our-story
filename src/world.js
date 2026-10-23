@@ -1,3 +1,4 @@
+import { applyPageTheme } from './page-theme.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { river, mountain, ringScene } from './scenes/beginning.js';
@@ -9,7 +10,7 @@ import { mix, smooth } from './scenes/kit.js';
 import { extendEnvironment } from './scenes/environment.js';
 import { createInteractionEffects } from './scenes/interaction-effects.js';
 import { projectionSize, damping } from './framing.js';
-import { ART, LOOK, themeFor } from './art-direction.js';
+import { ART, LOOK, themeFor, scenePalette } from './art-direction.js';
 
 const factories={river,mountain,bar,live,museum,skewers:skewersDinner,crabs,stars,shop,cycling,camp,concert,driving,barbecue,swans,forest,coffee,beach,ring:ringScene};
 
@@ -56,11 +57,8 @@ export function createWorld(container,{onError}={}) {
     if(!cache.has(id)){const setting=factories[id]();extendEnvironment(setting,id);setting.effects=createInteractionEffects(setting,id);setting.root.visible=false;scene.add(setting.root);cache.set(id,setting);}
     current=cache.get(id);current.root.visible=true;currentId=id;
     controls.maxPolarAngle=id==='stars'?1.55:1.42;
-    const theme=themeFor(current.theme,id);document.documentElement.style.setProperty('--sky',theme.background);document.documentElement.style.setProperty('--ground',theme.bottom);
+    const theme=themeFor(current.theme,id);applyPageTheme(document,{...scenePalette(LOOK,id),look:LOOK,scene:id});
     scene.fog=new THREE.FogExp2(theme.background,id==='stars'?.008:current.root.userData.indoor?.014:.019);
-    document.documentElement.dataset.scene=id;document.documentElement.dataset.look=LOOK;
-    document.documentElement.style.setProperty('--caption-ink',['stars','live','concert','cycling','ring'].includes(id)?'#fff5e4':'#594b43');
-    document.documentElement.style.setProperty('--caption-shadow',['stars','live','concert','cycling','ring'].includes(id)?'#14233399':'#fff3dcaa');
     ambient.intensity=theme.ambient;sun.intensity=theme.intensity;sun.color.set(theme.sun);
     const view=getView(state);camera.position.set(...view.position);controls.target.set(...view.target);camera.zoom=1;activeSpan=view.span;project(activeSpan);controls.update();
     manualUntil=0;renderer.shadowMap.needsUpdate=true;

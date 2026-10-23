@@ -30,3 +30,13 @@ test('large playback steps cross chapters without losing time or overshooting th
   const t=new FilmTimeline(SCENES,{interactive:false});t.tick(SCENES[0].duration+SCENES[1].duration+5);assert.equal(t.scene.id,'bar');assert.equal(t.elapsed,5);
   t.tick(NaN);t.tick(-2);assert.equal(t.elapsed,5);
 });
+
+for(const phase of ['arriving','waiting','acting','settled','leaving','ring-arriving','ring-waiting','ring-opened'])test(`a paused ${phase} resumes on click without changing its pose, action or destination`,()=>{
+  const t=new FilmTimeline(SCENES);
+  if(phase==='arriving')t.tick(3);
+  else if(phase.startsWith('ring')){t.goto(18,phase==='ring-arriving'?3:19);if(phase==='ring-opened'){t.open();t.tick(2);}}
+  else{t.tick(100);if(phase==='acting'||phase==='settled'){t.interact();t.tick(phase==='acting'?1:20);}if(phase==='leaving'){t.navigate(1);t.tick(.3);}}
+  t.paused=true;
+  const snapshot=()=>[t.index,t.elapsed,t.phase,t.action,t.actionStart,t.actionElapsed,t.settleElapsed,t.exitElapsed,t.pendingAction,t.autoContinue,t.destination,t.opened,t.openElapsed];
+  const before=snapshot();assert.equal(t.interact(),true);assert.equal(t.paused,false);assert.deepEqual(snapshot(),before);
+});
