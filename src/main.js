@@ -33,9 +33,9 @@ function render(now){
   const status=timeline.paused?'paused':timeline.isFinal?(timeline.opened?'opened':timeline.waiting?'waiting':'arriving'):timeline.phase;
   if($('film').dataset.status!==status)$('film').dataset.status=status;
   if($('film').dataset.phase!==timeline.phase)$('film').dataset.phase=timeline.phase;
-  try{world.render({id:scene.id,time:timeline.elapsed+idleTime,progress:timeline.progress,opening:timeline.opening,action:timeline.action,phase:timeline.phase,transition:timeline.transition,delta:dt,paused:timeline.paused});}catch(error){fail(error);return;}
+  try{world.render({id:scene.id,time:timeline.elapsed+idleTime,progress:timeline.progress,opening:timeline.opening,opened:timeline.opened,action:timeline.action,phase:timeline.phase,transition:timeline.transition,delta:dt,paused:timeline.paused});}catch(error){fail(error);return;}
   if(scene.id!==sceneId){sceneId=scene.id;$('film').dataset.scene=scene.id;}
-  const label=timeline.isFinal?(timeline.opened?'戒指盒已打开':timeline.waiting?'点击打开戒指盒':scene.title):timeline.phase==='leaving'?`${scene.title}，正在转场`:timeline.phase==='settled'?`${scene.title}，点击继续，左滑进入下一幕`:timeline.phase==='acting'?`${scene.title}，动作进行中，再次点击可接着转场`:`${scene.title}，${timeline.cue.label}，也可左滑继续`;
+  const label=timeline.isFinal?(timeline.opened?'戒指盒已打开':timeline.waiting?'点击打开戒指盒':scene.title):timeline.phase==='leaving'?`${scene.title}，正在转场`:timeline.phase==='settled'?`${scene.title}，点击继续，左滑下一幕，右滑上一幕`:timeline.phase==='acting'?`${scene.title}，动作进行中，再次点击可接着转场，左右滑动可切换场景`:`${scene.title}，${timeline.cue.label}，左滑下一幕，右滑上一幕`;
   if($('world').getAttribute('aria-label')!==label)$('world').setAttribute('aria-label',label);
   const fadeIn=Math.max(0,1-timeline.elapsed/1.15);
   const fadeOut=timeline.interactive?timeline.transition:timeline.isFinal?0:Math.max(0,(timeline.elapsed-scene.duration+1.1)/1.1);
@@ -55,7 +55,9 @@ if(world)raf=requestAnimationFrame(render);
 async function startAudio(){try{if(!audio.started)await audio.start();}catch{/* Visual playback continues if audio is unavailable. */}}
 function act(intent){
   if(!intent)return;
-  if(intent==='previous')timeline.back();else timeline.interact({through:intent==='next'});
+  if(intent==='previous')timeline.navigate(-1);
+  else if(intent==='next')timeline.navigate(1);
+  else timeline.interact();
   startAudio();
 }
 $('world').addEventListener('pointerdown',event=>{
@@ -75,7 +77,7 @@ window.addEventListener('pointercancel',event=>{activePointers.delete(event.poin
 $('world').addEventListener('wheel',event=>{
   if(event.ctrlKey||event.metaKey)return;
   event.preventDefault();event.stopPropagation();
-  if(['acting','leaving'].includes(timeline.phase))return;
+  if(timeline.phase==='leaving')return;
   const delta=(Math.abs(event.deltaX)>Math.abs(event.deltaY)?event.deltaX:event.deltaY)*(event.deltaMode===1?16:event.deltaMode===2?innerHeight:1);
   act(wheelIntent.push(delta,performance.now()));
 },{passive:false,capture:true});
@@ -87,7 +89,7 @@ window.addEventListener('keydown',event=>{
   if(event.code==='Space'){timeline.paused=!timeline.paused;startAudio();}
   else if(event.code==='ArrowRight')act('next');
   else if(event.code==='ArrowLeft')act('previous');
-  else if(event.code==='Home'||event.code==='KeyR'){timeline.goto(0);timeline.paused=false;}
+  else if(event.code==='Home'||event.code==='KeyR')timeline.restart();
   else if(event.code==='End')timeline.goto(SCENES.length-1,SCENES.at(-1).waitAt);
   else if(event.code==='Enter')act('tap');
   else if(event.code==='KeyT')captionsEnabled=!captionsEnabled;

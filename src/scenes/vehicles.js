@@ -33,8 +33,9 @@ export function cycling(){
   const positions=string.geometry.attributes.position;
   return sceneResult(root,({time,progress})=>{
     bikes.forEach((bike,i)=>{
-      const t=.12+progress*.66+(i===1?.13:0);const point=path.getPoint(t),tan=path.getTangent(t);bike.root.position.copy(point);bike.root.rotation.y=-Math.atan2(tan.z,tan.x);
-      const distance=path.getLength()*progress*.66;
+      const t=.1+progress*.58+(i===1?.29:0),point=path.getPointAt(t),tan=path.getTangentAt(t);
+      const lateral=i===1?-.16:.16;point.add(new THREE.Vector3(-tan.z,0,tan.x).multiplyScalar(lateral));bike.root.position.copy(point);bike.root.rotation.y=-Math.atan2(tan.z,tan.x);
+      const distance=path.getLength()*progress*.58;
       bike.wheels.forEach(w=>w.rotation.z=-distance/.45);bike.crank.rotation.z=-distance*2.6;
       bike.pedals.forEach(p=>p.rotation.z=-bike.crank.rotation.z);
       const c=riders[i];c.pose({sit:1});c.body.rotation.x=.9;c.body.position.set(0,.28+.15*Math.cos(.9),.15*Math.sin(.9));c.idle(time);

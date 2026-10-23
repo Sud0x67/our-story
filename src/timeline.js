@@ -3,7 +3,7 @@ const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const ease=n=>{n=clamp(n);return n*n*(3-2*n);};
 export class FilmTimeline {
   constructor(scenes,{index=0,elapsed=0,paused=false,speed=1,interactive=true}={}) {
-    this.scenes=scenes;this.paused=paused;this.speed=speed;this.interactive=interactive;this.goto(index,elapsed);
+    this.snapshots=new Map();this.scenes=scenes;this.paused=paused;this.speed=speed;this.interactive=interactive;this.goto(index,elapsed);
   }
   get scene(){return this.scenes[this.index];}
   get cue(){return sceneCue(this.scene.id);}
@@ -29,14 +29,25 @@ export class FilmTimeline {
     if(this.phase==='settled'){this.leave(this.index+1);return true;}
     this.phase='acting';this.actionStart=this.elapsed;this.actionElapsed=0;this.autoContinue=through;return true;
   }
-  leave(index){this.phase='leaving';this.exitElapsed=0;this.destination=clamp(index,0,this.scenes.length-1);}
-  back(){if(this.index===0||this.phase==='leaving')return false;this.paused=false;this.leave(this.index-1);return true;}
+  leave(index){
+    const phase=this.phase==='settled'?'settled':'waiting';
+    this.snapshots.set(this.index,{elapsed:this.elapsed,phase,actionDone:this.actionDone,opened:this.opened,openElapsed:this.openElapsed});
+    this.phase='leaving';this.exitElapsed=0;this.destination=clamp(index,0,this.scenes.length-1);
+  }
+  navigate(direction){
+    if(direction!==1&&direction!==-1||this.phase==='leaving')return false;
+    const destination=this.index+direction;
+    if(destination<0||destination>=this.scenes.length)return false;
+    this.paused=false;this.autoContinue=false;this.leave(destination);return true;
+  }
+  back(){return this.navigate(-1);}
+  restart(){this.snapshots.clear();this.goto(0);this.paused=false;}
   tick(seconds){
     if(this.paused||!Number.isFinite(seconds)||seconds<=0)return false;
     const dt=seconds*this.speed;
     if(this.phase==='leaving'){
       this.exitElapsed=Math.min(.95,this.exitElapsed+dt);
-      if(this.exitElapsed>=.95){const destination=this.destination;this.goto(destination);return true;}return false;
+      if(this.exitElapsed>=.95){const destination=this.destination,saved=this.snapshots.get(destination);this.goto(destination);if(saved){Object.assign(this,saved);this.actionStart=this.elapsed;}return true;}return false;
     }
     if(this.isFinal){
       this.elapsed=Math.min(this.scene.waitAt,this.elapsed+dt);
@@ -46,7 +57,7 @@ export class FilmTimeline {
     if(this.interactive){
       if(this.phase==='acting'){
         this.actionElapsed=Math.min(this.cue.duration,this.actionElapsed+dt);
-        this.elapsed=this.actionStart+(this.scene.duration-this.actionStart)*ease(this.action);
+        this.elapsed=this.actionStart+(this.scene.duration-this.actionStart)*(this.cue.pace==='linear'?this.action:ease(this.action));
         if(this.actionElapsed>=this.cue.duration){this.elapsed=this.scene.duration;this.actionDone=true;if(this.autoContinue)this.leave(this.index+1);else this.phase='settled';}
       }else if(this.phase==='arriving'){
         this.elapsed=Math.min(this.cue.introAt,this.elapsed+dt);

@@ -1,4 +1,4 @@
-import { THREE, palette, material, mesh, box, ball, cylinder, line, group, tube, indoor, table, chair, cup, picture, steam, textSign, smooth, mix, sceneResult, themes } from './kit.js';
+import { THREE, palette, material, mesh, box, ball, cylinder, line, group, tube, indoor, table, chair, cup, picture, revealPicture, steam, textSign, smooth, mix, sceneResult, themes } from './kit.js';
 import { seatOn } from './contacts.js';
 import { couple, person } from './characters.js';
 
@@ -67,12 +67,13 @@ export function museum(){
   bronzeMask(root,[0,2.6,-4.05],1.65);textSign(root,'三星堆',1.7,.4,[0,3.8,-4.23],'#405d51','#d8d6aa');
   const pair=couple(root,[[-.63,0,1.05],[.63,0,1.05]],{popo:{coat:'#e1e2d7'},xiaohe:{coat:'#91b9cd'}});
   const masks=[bronzeMask(pair.p.arms[0].hand,[0,.08,.12],.38),bronzeMask(pair.h.arms[1].hand,[0,.08,.12],.38)];
-  const photo=picture(root,'/assets/museum.webp',[3.8,2.25,1.5],2.25,3);photo.rotation.y=-.18;
+  const photo=picture(root,'/assets/museum.webp',[4.05,3.30,-4.25],1.5,2);
+  photo.userData.attachment='wall';
   return sceneResult(root,({time,progress})=>{
     pair.idle(time);const pose=smooth((progress-.3)/.25);
     for(const [i,c]of[pair.p,pair.h].entries()){c.pose({reach:pose});c.root.rotation.y=mix(i?-.7:.7,0,pose);c.head.rotation.y=mix(i?-.35:.35,0,pose);}
-    masks.forEach(m=>m.visible=pose>.15);photo.scale.setScalar(smooth((progress-.68)/.12));
-  },{theme:themes.museum,view:{from:[11,8,16],to:[7,5.8,14],target:[0,1.5,-.4],endTarget:[.6,1.55,.7],span:11.2,endSpan:8.3}});
+    masks.forEach(m=>m.visible=pose>.15);revealPicture(photo,smooth((progress-.60)/.30));
+  },{memories:{photo},theme:themes.museum,view:{from:[11,8,16],to:[7,5.8,14],target:[0,1.5,-.4],endTarget:[1.5,1.8,-2.3],span:11.2,endSpan:10.4}});
 }
 
 function skewers(parent,position,scale=1){
@@ -121,14 +122,18 @@ export function shop(){
   }
   for(const [i,color] of ['#789db0','#dba593','#a7b49c'].entries())chair(root,[2.15+i*.9,0,.3],0,color);
   const pair=couple(root,[[-1.1,0,1],[.2,0,1]],{popo:{coat:'#d3c7ab'},xiaohe:{coat:'#bdb89b',hat:'#c8bea2'}});
-  const toy=plush(root,[.65,1.15,1.4],'#d6c1a7',true);
-  const photo=picture(root,'/assets/yiwu.webp',[3.5,2.25,-.9],2.4,2.4);photo.rotation.y=-.2;
+  const toyTable=table(root,[2.3,0,1.6],1.2,.85,'#c7ac86');
+  const toy=plush(root,[2.3,0,1.6],'#d6c1a7',true);toy.rotation.y=.12;
+  toy.position.y+=.953-new THREE.Box3().setFromObject(toy).min.y;
+  const photoTable=table(root,[2.2,0,-1.15],2.05,.85,'#c7ac86');
+  const photo=picture(root,'/assets/yiwu.webp',[2.2,1.785,-1.15],1.55,1.55);
+  photo.userData.attachment='table';
   return sceneResult(root,({time,progress})=>{
     const walk=smooth(progress/.3);pair.p.root.position.x=-1.1+walk*.5;pair.h.root.position.x=.2+walk*.5;
     for(const [i,c]of[pair.p,pair.h].entries()){c.pose({walk:Math.sin(walk*Math.PI)*.6,phase:time*5+i,reach:smooth((progress-.3)/.2)*.7});c.head.rotation.y=Math.sin(time*.5)*.15;}
-    pair.idle(time);toy.rotation.y=Math.sin(time*.6)*.15;toy.position.y=1.1+Math.sin(time)*.035;
-    photo.scale.setScalar(smooth((progress-.67)/.15));
-  },{view:{from:[11,8,16],to:[8,5.7,13],target:[0,1.5,-.3],endTarget:[.6,1.55,.6],span:10.9,endSpan:8.4}});
+    pair.idle(time);
+    revealPicture(photo,smooth((progress-.57)/.32));
+  },{memories:{photo,photoTable,toy,toyTable,actors:[pair.p,pair.h]},view:{from:[11,8,16],to:[8,5.7,13],target:[0,1.5,-.3],endTarget:[.6,1.55,.6],span:10.9,endSpan:8.4}});
 }
 
 export function barbecue(){

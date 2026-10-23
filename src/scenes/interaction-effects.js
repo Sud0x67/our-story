@@ -2,12 +2,16 @@ import {THREE,group,mesh,ball,line} from './kit.js';
 import {sceneCue} from '../interaction-config.js';
 const fade=p=>Math.sin(Math.max(0,Math.min(1,p))*Math.PI);
 export function createInteractionEffects(setting,id){
- if(id==='ring')return {update(){},root:null};
  const cue=sceneCue(id),root=group(setting.root),origin=group(root,cue.anchor),ink='#f4d8a2';
  root.userData.interactionEffect=true;
  const mat=(color=ink,opacity=0)=>new THREE.MeshBasicMaterial({color,transparent:true,opacity,depthWrite:false,toneMapped:false});
- const halo=mesh(origin,new THREE.TorusGeometry(.28,.009,4,48),mat(ink,.25));halo.castShadow=false;
- const hint=ball(origin,.028,mat(ink,.5),[.36,0,0],1);hint.castShadow=false;
+ const badge=group(origin),outline='#a86a4b';
+ const disc=mesh(badge,new THREE.CircleGeometry(.245,40),mat('#fff1d6',.7));
+ const halo=mesh(badge,new THREE.TorusGeometry(.275,.017,5,48),mat(outline,.75));
+ const center=mesh(badge,new THREE.RingGeometry(.055,.082,24),mat(outline,.8),[0,0,.008]);
+ const dot=ball(badge,.025,mat(outline,.9),[0,0,.014],1);
+ const hint=ball(badge,.028,mat(outline,.7),[.275,0,0],1);
+ for(const item of [disc,halo,center,dot,hint]){item.castShadow=false;item.renderOrder=900;item.material.depthTest=false;}
  const motes=[];
  for(let i=0;i<9;i++){
   const kind=cue.kind,leaf=kind==='leaves'||kind==='petals';
@@ -24,11 +28,14 @@ export function createInteractionEffects(setting,id){
  function update(state,camera){
   const a=state.action||0,active=state.phase==='acting',pulse=fade(a),t=state.time||0;
   const anchor=setting.interactionAnchor?.();origin.position.copy(anchor||new THREE.Vector3(...cue.anchor));
-  halo.quaternion.copy(camera.quaternion);hint.quaternion.copy(camera.quaternion);
+  badge.quaternion.copy(camera.quaternion);
   const waiting=state.phase==='waiting'||state.phase==='settled';
-  halo.material.opacity=state.phase==='leaving'?0:active?0:(waiting?.23:.10)+Math.sin(t*1.9)*.055;
-  halo.scale.setScalar(1+Math.sin(t*1.9)*.07);hint.material.opacity=halo.material.opacity*1.7;
-  hint.position.set(Math.cos(t*.7)*.36,Math.sin(t*.7)*.36,0);
+  badge.visible=!active&&state.phase!=='leaving'&&!state.opened&&!(state.opening>0)&&(id!=='ring'||state.progress>=1);
+  const strength=waiting?.78:.45;
+  halo.material.opacity=strength+Math.sin(t*1.7)*.06;disc.material.opacity=waiting?.68:.4;
+  center.material.opacity=strength;dot.material.opacity=strength;hint.material.opacity=strength;
+  badge.scale.setScalar(1+Math.sin(t*1.7)*.035);
+  hint.position.set(Math.cos(t*.7)*.275,Math.sin(t*.7)*.275,.012);
   const water=cue.kind==='ripple'||cue.kind==='wave';
   for(const [i,m]of motes.entries()){
    const angle=i*2.399+a*1.8,r=.24+pulse*.55;
@@ -44,5 +51,5 @@ export function createInteractionEffects(setting,id){
   }
   if(shooting){shooting.position.set(8-a*15,13-a*7,-12);shooting.material.opacity=active?pulse*.95:0;}
  }
- return {root,update};
+ return {root,badge,update};
 }

@@ -154,8 +154,10 @@ export function picture(parent, url, position, width, height) {
   const assetUrl=(import.meta.env?.BASE_URL||'/')+url.replace(/^\//,'');
   if(!photoTextures.has(url)){const texture=new THREE.TextureLoader().load(assetUrl,()=>window.dispatchEvent(new Event('memory-assets-ready')));texture.colorSpace=THREE.SRGBColorSpace;photoTextures.set(url,texture);}
   const g=group(parent,position);box(g,[width+.12,height+.12,.06],'#e9dfc6',[0,0,-.04]);
-  mesh(g,new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map:photoTextures.get(url)}),[0,0,.005]);return g;
+  const image=mesh(g,new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map:photoTextures.get(url),transparent:true,opacity:0,depthWrite:false}),[0,0,.005]);
+  image.castShadow=false;image.receiveShadow=false;g.userData.photoImage=image;return g;
 }
+export function revealPicture(frame,amount){frame.userData.photoImage.material.opacity=Math.max(0,Math.min(1,amount));}
 export function indoor(colors = {}) {
   const root=new THREE.Group();base(root,160,160,colors.floor||'#a88f72');
   root.userData.indoor=true;
