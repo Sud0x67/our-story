@@ -21,6 +21,7 @@ import {
 } from './kit.js';
 import { worldPoint } from './contacts.js';
 import { person, couple, reachHand, reachFoot, localHand } from './characters.js';
+import { DRIVE_ROUTE, drivingMotion, drivingView } from './choreography.js';
 function bicycle(parent, color) {
   const g = group(parent);
   const wheels = [];
@@ -239,17 +240,16 @@ function carWheel(parent, x, z) {
 export function driving() {
   const root = new THREE.Group();
   base(root, 18, 12, '#8fa58b');
-  const road = group(root, [0, 0, 0], -0.4);
-  box(road, [6.4, 0.08, 240], '#8e9990', [0, 0.01, 0]);
+  const road = group(root, [0, 0, 0], DRIVE_ROUTE.yaw);
+  const surface = box(road, [6.4, 0.08, 240], '#8e9990', [0, 0.01, 0]);
   for (let z = -100; z < 100; z += 1.5) box(road, [0.06, 0.025, 0.65], '#e1ddbf', [0, 0.07, z]);
-  for (const [x, z, s] of [
-    [-6, -4, 1.1],
-    [-2, -4.5, 1],
-    [3.5, -4.4, 1.3],
-    [6.7, 4, 1],
-  ])
-    tree(root, x, z, s);
-  const car = group(root, [0, 0.06, 0.4], -0.4);
+  const roadside = group(road);
+  for (let i = 0; i < 10; i++) {
+    const z = -17 + i * 5.5;
+    tree(roadside, i % 2 ? -6.8 : 6.8, z, 0.95 + (i % 3) * 0.12);
+    if (i % 2 === 0) lamp(roadside, -4.3, z + 1.5);
+  }
+  const car = group(road, [DRIVE_ROUTE.lane, 0.06, DRIVE_ROUTE.start]);
   const white = material('#e5e6db', { roughness: 0.32, metalness: 0.12 });
   const floor = box(car, [2.3, 0.12, 3.1], white, [0, 0.56, -0.15]);
   for (const x of [-1.22, 1.22]) box(car, [0.16, 0.55, 3.3], white, [x, 0.83, -0.15]);
@@ -278,7 +278,7 @@ export function driving() {
     for (const z of [-1.63, 1.1]) box(car, [0.08, 1.12, 0.08], white, [x, 1.84, z]);
     box(car, [0.035, 0.17, 2.75], white, [x, 1.4, -0.2]);
     box(car, [0.035, 0.035, 0.28], '#a3aaa0', [x * 1.015, 1.43, -0.2]);
-    box(car, [0.3, 0.15, 0.32], white, [x * 1.12, 1.86, 0.94]);
+    box(car, [0.3, 0.15, 0.32], white, [x * 1.12, 1.63, 0.94]);
   }
   const wind = box(car, [2.33, 0.9, 0.045], glass, [0, 1.92, 1.1]);
   wind.rotation.x = -0.18;
@@ -292,14 +292,22 @@ export function driving() {
     box(car, [0.43, 0.31, 0.18], '#aeb4a9', [x, 1.98, -0.67]);
   }
   box(car, [2.2, 0.28, 0.5], '#9ca59e', [0, 1.45, 0.95]);
-  box(car, [0.74, 0.38, 0.035], '#596c68', [0, 1.72, 0.91]);
+  box(car, [0.64, 0.32, 0.035], '#596c68', [0, 1.58, 0.91]);
   const steering = mesh(
     car,
     new THREE.TorusGeometry(0.23, 0.035, 5, 28),
     '#606e68',
-    [-0.64, 1.43, 0.45],
+    [0.64, 1.43, 0.45],
   );
   steering.rotation.x = 0.25;
+  cylinder(car, 0.045, 0.045, 0.28, '#606e68', [0.64, 1.43, 0.62], 10).rotation.x = Math.PI / 2;
+  ball(steering, 0.06, '#707e77', [0, 0, 0]);
+  for (const endpoint of [
+    [-0.2, 0, 0],
+    [0.2, 0, 0],
+    [0, -0.2, 0],
+  ])
+    tube(steering, [[0, 0, 0], endpoint], 0.015, '#707e77');
   textSign(car, 'ZEEKR', 0.5, 0.09, [0, 1.32, 2.235], '#e5e6db', '#5b6e68');
   const pair = couple(
     car,
@@ -309,21 +317,20 @@ export function driving() {
     ],
     { popo: { scale: 0.63, coat: '#d0c7ae' }, xiaohe: { scale: 0.63, coat: '#a7bfca' } },
   );
-  // Xiaohe drives on the left, Popo accompanies her on the right.
-  pair.h.root.position.set(-0.64, 0.9766, 0.18);
-  pair.p.root.position.set(0.64, 0.9766, 0.18);
+  // The car faces +Z, so the driver's left is +X (the opposite of a front-facing camera).
+  pair.h.root.position.set(0.64, 0.9766, 0.18);
+  pair.p.root.position.set(-0.64, 0.9766, 0.18);
   const wheels = [];
   for (const x of [-1.3, 1.3]) for (const z of [-1.45, 1.48]) wheels.push(carWheel(car, x, z));
   return sceneResult(
     root,
     ({ time, progress }) => {
-      const distance = progress * 2.2;
-      car.position.x = Math.sin(-0.4) * (distance - 1.1);
-      car.position.z = 0.4 + Math.cos(-0.4) * (distance - 1.1);
+      const { distance } = drivingMotion(progress);
+      car.position.set(DRIVE_ROUTE.lane, 0.06, DRIVE_ROUTE.start + distance);
       pair.h.pose({ sit: 1, reach: 0.7 });
       pair.p.pose({ sit: 1 });
       pair.idle(time);
-      pair.p.head.rotation.y = -0.2;
+      pair.p.head.rotation.y = 0.24;
       steering.rotation.z = Math.sin(time * 0.7) * 0.09;
       wheels.forEach((w) => (w.rotation.z = distance / 0.43));
       for (let j = 0; j < 2; j++) {
@@ -332,15 +339,20 @@ export function driving() {
       }
     },
     {
-      contacts: { actors: [pair.p, pair.h], driver: pair.h, steering, floor, car, wheels },
-      view: {
-        from: [-11, 8, 17],
-        to: [-7, 5, 11],
-        target: [0, 1.3, 0.3],
-        endTarget: [0.2, 1.65, 0.2],
-        span: 12.5,
-        endSpan: 7.0,
+      contacts: {
+        actors: [pair.p, pair.h],
+        driver: pair.h,
+        passenger: pair.p,
+        steering,
+        floor,
+        car,
+        wheels,
+        road,
+        roadside,
+        surface,
       },
+      interactionAnchor: () => worldPoint(car, [0, 2.7, 0.25]),
+      view: ({ progress }) => drivingView(progress),
     },
   );
 }

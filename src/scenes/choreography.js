@@ -1,4 +1,32 @@
-import { smooth, mix } from './kit.js';
+import { smooth, mix, clamp } from './kit.js';
+
+export const DRIVE_ROUTE = { yaw: -0.4, lane: -1.62, start: -6, length: 18, intro: 0.3 };
+
+export function drivingMotion(progress) {
+  const travel = clamp((progress - DRIVE_ROUTE.intro) / (1 - DRIVE_ROUTE.intro));
+  return { travel, distance: travel * DRIVE_ROUTE.length };
+}
+
+export function drivingView(progress) {
+  const { travel, distance } = drivingMotion(progress);
+  const approach = smooth(progress / DRIVE_ROUTE.intro);
+  const angle = mix(0.9, 2.35, smooth(travel / 0.8));
+  const radius = mix(mix(14, 11.5, approach), 13.2, travel);
+  const point = (x, y, z) => [
+    Math.cos(DRIVE_ROUTE.yaw) * x + Math.sin(DRIVE_ROUTE.yaw) * z,
+    y,
+    -Math.sin(DRIVE_ROUTE.yaw) * x + Math.cos(DRIVE_ROUTE.yaw) * z,
+  ];
+  return {
+    position: point(
+      DRIVE_ROUTE.lane + Math.sin(angle) * radius,
+      mix(mix(9, 7.4, approach), 6.8, travel),
+      DRIVE_ROUTE.start + distance * 0.38 + Math.cos(angle) * radius,
+    ),
+    target: point(DRIVE_ROUTE.lane, 1.25, DRIVE_ROUTE.start + distance * 0.9),
+    span: mix(mix(12.6, 10.4, approach), 14.2, travel),
+  };
+}
 
 export function riverMotion(progress, index = 0) {
   const travel = smooth(progress / 0.38),

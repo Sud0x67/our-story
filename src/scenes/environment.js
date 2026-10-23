@@ -1,5 +1,6 @@
 import { THREE, group, mesh, box, ball, tree, house, walkway, grassTuft, material } from './kit.js';
 import { bakeScenery } from './landscape.js';
+import { DRIVE_ROUTE } from './choreography.js';
 const outdoor = new Set([
   'river',
   'mountain',
@@ -100,6 +101,8 @@ export function extendEnvironment(setting, id) {
         (z > 7 && Math.abs(x) < 13) ||
         (id === 'mountain' && x > 0) ||
         (id === 'cycling' && z < -1) ||
+        (id === 'driving' &&
+          Math.abs(Math.cos(DRIVE_ROUTE.yaw) * x - Math.sin(DRIVE_ROUTE.yaw) * z) < 6.4) ||
         (id === 'river' && x < -0.9 && x > -4)
       )
         continue;
