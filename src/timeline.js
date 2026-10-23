@@ -9,7 +9,6 @@ export class FilmTimeline {
     scenes,
     { index = 0, elapsed = 0, paused = false, speed = 1, interactive = true } = {},
   ) {
-    this.snapshots = new Map();
     this.scenes = scenes;
     this.paused = paused;
     this.speed = speed;
@@ -29,6 +28,13 @@ export class FilmTimeline {
     return this.isFinal
       ? !this.opened && this.elapsed >= this.scene.waitAt
       : this.interactive && ['waiting', 'settled'].includes(this.phase);
+  }
+  get needsInput() {
+    return (
+      this.phase !== 'leaving' &&
+      !this.opened &&
+      (this.paused || (this.waiting && !this.autoContinue && !this.pendingAction))
+    );
   }
   get progress() {
     return clamp(this.elapsed / (this.isFinal ? this.scene.waitAt : this.scene.duration));
@@ -105,14 +111,6 @@ export class FilmTimeline {
     this.autoContinue = true;
   }
   leave(index) {
-    const phase = this.phase === 'settled' ? 'settled' : 'waiting';
-    this.snapshots.set(this.index, {
-      elapsed: this.elapsed,
-      phase,
-      actionDone: this.actionDone,
-      opened: this.opened,
-      openElapsed: this.openElapsed,
-    });
     this.pendingAction = false;
     this.autoContinue = false;
     this.phase = 'leaving';
@@ -132,7 +130,6 @@ export class FilmTimeline {
     return this.navigate(-1);
   }
   restart() {
-    this.snapshots.clear();
     this.goto(0);
     this.paused = false;
   }
@@ -142,13 +139,7 @@ export class FilmTimeline {
     if (this.phase === 'leaving') {
       this.exitElapsed = Math.min(0.95, this.exitElapsed + dt);
       if (this.exitElapsed >= 0.95) {
-        const destination = this.destination,
-          saved = this.snapshots.get(destination);
-        this.goto(destination);
-        if (saved) {
-          Object.assign(this, saved);
-          this.actionStart = this.elapsed;
-        }
+        this.goto(this.destination);
         return true;
       }
       return false;

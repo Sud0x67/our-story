@@ -17,13 +17,15 @@ for (let index = 0; index < 18; index++)
     assert.equal(t.navigate(1), false);
     t.tick(1);
     assert.equal(t.index, index + 1);
+    assert.equal(t.elapsed, 0);
+    assert.equal(t.phase, 'arriving');
+    assert.equal(t.needsInput, false);
   });
-test('returning to a completed memory restores its completed pose and caption', () => {
+test('returning to a completed memory replays the intro, captions and action from the start', () => {
   const t = new FilmTimeline(SCENES);
   t.tick(100);
   t.interact();
   t.tick(20);
-  const caption = t.caption().text;
   assert.equal(t.phase, 'settled');
   t.navigate(1);
   t.tick(1);
@@ -31,28 +33,40 @@ test('returning to a completed memory restores its completed pose and caption', 
   t.navigate(-1);
   t.tick(1);
   assert.equal(t.index, 0);
-  assert.equal(t.phase, 'settled');
-  assert.equal(t.progress, 1);
-  assert.equal(t.action, 1);
-  assert.equal(t.caption().text, caption);
+  assert.equal(t.phase, 'arriving');
+  assert.equal(t.progress, 0);
+  assert.equal(t.action, 0);
+  assert.equal(t.caption().text, '');
+  assert.equal(t.needsInput, false);
+  t.tick(3);
+  assert.equal(t.elapsed, 3);
+  assert.equal(t.phase, 'arriving');
   t.tick(100);
   assert.equal(t.index, 0);
+  assert.equal(t.phase, 'waiting');
+  assert.equal(t.elapsed, t.cue.introAt);
+  assert.equal(t.needsInput, true);
+  t.interact();
+  t.tick(t.cue.duration);
+  assert.equal(t.phase, 'settled');
+  assert.equal(t.action, 1);
 });
-test('leaving during an action cancels pending advancement and returns to the same story position', () => {
+test('leaving during an action cancels pending advancement and returning starts over', () => {
   const t = new FilmTimeline(SCENES);
   t.tick(100);
   t.interact();
   t.tick(2);
-  const elapsed = t.elapsed;
   t.navigate(1);
   t.tick(1);
   t.navigate(-1);
   t.tick(1);
-  assert.equal(t.elapsed, elapsed);
-  assert.equal(t.phase, 'waiting');
+  assert.equal(t.elapsed, 0);
+  assert.equal(t.phase, 'arriving');
+  assert.equal(t.action, 0);
   assert.equal(t.autoContinue, false);
+  assert.equal(t.pendingAction, false);
   t.tick(100);
-  assert.equal(t.elapsed, elapsed);
+  assert.equal(t.elapsed, t.cue.introAt);
   t.interact();
   t.tick(20);
   assert.equal(t.phase, 'settled');
@@ -70,21 +84,67 @@ test('first and last scene controls respect bounds and changing scenes never ope
   t.tick(1);
   assert.equal(t.scene.id, 'ring');
   assert.equal(t.opened, false);
+  assert.equal(t.elapsed, 0);
+  assert.equal(t.waiting, false);
+  assert.equal(t.needsInput, false);
+  t.tick(19);
   assert.equal(t.waiting, true);
 });
-test('restarting clears navigation history and the proposal state', () => {
+test('returning to the proposal resets its open box and replays the approach', () => {
   const t = new FilmTimeline(SCENES, { index: 18, elapsed: 19 });
   t.open();
   t.tick(5);
   t.navigate(-1);
   t.tick(1);
-  assert.ok(t.snapshots.size);
+  t.navigate(1);
+  t.tick(1);
+  assert.equal(t.scene.id, 'ring');
+  assert.equal(t.opened, false);
+  assert.equal(t.opening, 0);
+  assert.equal(t.progress, 0);
+  assert.equal(t.needsInput, false);
+  assert.equal(t.interact(), false);
+  t.tick(19);
+  assert.equal(t.needsInput, true);
+  assert.equal(t.opened, false);
+  assert.equal(t.interact(), true);
+});
+test('restarting clears playback, pending actions and the proposal state', () => {
+  const t = new FilmTimeline(SCENES, { index: 18, elapsed: 19 });
+  t.open();
+  t.tick(5);
+  t.paused = true;
   t.restart();
   assert.equal(t.index, 0);
-  assert.equal(t.snapshots.size, 0);
+  assert.equal(t.elapsed, 0);
+  assert.equal(t.action, 0);
+  assert.equal(t.opening, 0);
+  assert.equal(t.paused, false);
+  assert.equal(t.pendingAction, false);
+  assert.equal(t.autoContinue, false);
   assert.equal(t.opened, false);
   assert.equal(t.phase, 'arriving');
 });
+
+for (const [index, scene] of SCENES.entries())
+  test(`${scene.id}: revisiting a played scene starts with a fresh intro`, () => {
+    const t = new FilmTimeline(SCENES, { index });
+    t.tick(100);
+    t.interact();
+    t.tick(100);
+    const direction = index < SCENES.length - 1 ? 1 : -1;
+    t.navigate(direction);
+    t.tick(1);
+    t.navigate(-direction);
+    t.tick(1);
+    assert.equal(t.scene.id, scene.id);
+    assert.equal(t.phase, 'arriving');
+    assert.equal(t.elapsed, 0);
+    assert.equal(t.action, 0);
+    assert.equal(t.opened, false);
+    assert.equal(t.opening, 0);
+    assert.equal(t.needsInput, false);
+  });
 test('navigation resumes a paused preview and repeated input cannot queue a second jump', () => {
   const t = new FilmTimeline(SCENES, { index: 3, elapsed: 6, paused: true });
   assert.equal(t.navigate(-1), true);

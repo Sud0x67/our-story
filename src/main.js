@@ -70,6 +70,7 @@ function render(now) {
       opened: timeline.opened,
       action: timeline.action,
       phase: timeline.phase,
+      needsInput: timeline.needsInput,
       continuing: timeline.autoContinue || timeline.pendingAction,
       transition: timeline.transition,
       delta: dt,

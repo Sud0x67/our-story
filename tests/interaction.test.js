@@ -146,8 +146,8 @@ test('navigating away or replaying cancels an early queued tap', () => {
   assert.equal(t.phase, 'waiting');
   t.navigate(-1);
   t.tick(1);
-  t.tick(100);
-  assert.equal(t.phase, 'waiting');
+  assert.equal(t.phase, 'arriving');
+  assert.equal(t.elapsed, 0);
   assert.equal(t.action, 0);
   t.interact();
   assert.equal(t.pendingAction, true);

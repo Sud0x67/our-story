@@ -17,6 +17,7 @@ export function createInteractionEffects(setting, id) {
     });
   const badge = group(origin),
     outline = '#a86a4b';
+  badge.visible = false;
   const disc = mesh(badge, new THREE.CircleGeometry(0.245, 40), mat('#fff1d6', 0.7));
   const halo = mesh(badge, new THREE.TorusGeometry(0.275, 0.017, 5, 48), mat(outline, 0.75));
   const center = mesh(
@@ -90,17 +91,10 @@ export function createInteractionEffects(setting, id) {
     const anchor = setting.interactionAnchor?.();
     origin.position.copy(anchor || new THREE.Vector3(...cue.anchor));
     badge.quaternion.copy(camera.quaternion);
-    const waiting = state.phase === 'waiting' || state.phase === 'settled';
-    badge.visible =
-      !active &&
-      !state.continuing &&
-      state.phase !== 'leaving' &&
-      !state.opened &&
-      !(state.opening > 0) &&
-      (id !== 'ring' || state.progress >= 1);
-    const strength = waiting ? 0.78 : 0.45;
+    badge.visible = Boolean(state.needsInput);
+    const strength = 0.78;
     halo.material.opacity = strength + Math.sin(t * 1.7) * 0.06;
-    disc.material.opacity = waiting ? 0.68 : 0.4;
+    disc.material.opacity = 0.68;
     center.material.opacity = strength;
     dot.material.opacity = strength;
     hint.material.opacity = strength;

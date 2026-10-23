@@ -19,6 +19,8 @@ export function describeFilm(timeline) {
   else if (phase === 'leaving') label = `${scene.title}，正在转场`;
   else if (continuing)
     label = `${scene.title}，已触发，动作完成并停留后自动转场，左右滑动可切换场景`;
+  else if (phase === 'arriving')
+    label = `${scene.title}，开场播放中，停下后会出现点击提示，左右滑动可切换场景`;
   else if (phase === 'settled') label = `${scene.title}，点击继续，左滑下一幕，右滑上一幕`;
   else label = `${scene.title}，${timeline.cue.label}，左滑下一幕，右滑上一幕`;
   return { status, label, proposed };

@@ -193,7 +193,7 @@ export function createWorld(container, { onError } = {}) {
     render(state) {
       if (disposed) return;
       if (state.id !== currentId) show(state.id, state);
-      const stamp = `${state.id}:${state.time}:${state.progress}:${state.opening}:${state.opened}:${state.action}:${state.phase}:${state.continuing}:${state.transition}`;
+      const stamp = `${state.id}:${state.time}:${state.progress}:${state.opening}:${state.opened}:${state.action}:${state.phase}:${state.needsInput}:${state.continuing}:${state.transition}:${state.paused}`;
       const changed = stamp !== lastState;
       if (changed || !state.paused) {
         current.update?.(state);

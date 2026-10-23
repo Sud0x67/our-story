@@ -9,6 +9,8 @@ import { cycling, driving } from '../src/scenes/vehicles.js';
 import { live, concert } from '../src/scenes/performances.js';
 import { extendEnvironment } from '../src/scenes/environment.js';
 import { createInteractionEffects } from '../src/scenes/interaction-effects.js';
+import { FilmTimeline } from '../src/timeline.js';
+import { SCENES } from '../src/story-data.js';
 const factories = {
   river,
   mountain,
@@ -84,20 +86,64 @@ test('the flipped camping card clears the tabletop throughout the interaction', 
   }
 });
 
-test('a triggered memory hides its tap marker through the action and final hold', () => {
-  const effects = createInteractionEffects(crabs(), 'crabs'),
-    camera = new OrthographicCamera();
-  for (const state of [
-    { phase: 'waiting', continuing: false, visible: true },
-    { phase: 'arriving', continuing: true, visible: false },
-    { phase: 'acting', continuing: true, visible: false },
-    { phase: 'settled', continuing: true, visible: false },
-    { phase: 'leaving', continuing: false, visible: false },
-    { phase: 'settled', continuing: false, visible: true },
-  ]) {
-    effects.update({ time: 5, progress: 0.5, action: 0.5, ...state }, camera);
-    assert.equal(effects.badge.visible, state.visible);
-  }
+for (const [index, scene] of SCENES.entries())
+  test(`${scene.id}: the tap marker appears only when a click is needed`, () => {
+    const effects = createInteractionEffects(factories[scene.id](), scene.id),
+      camera = new OrthographicCamera(),
+      timeline = new FilmTimeline(SCENES, { index });
+    const checkMarker = (expected) => {
+      effects.update(
+        {
+          time: timeline.elapsed,
+          progress: timeline.progress,
+          action: timeline.action,
+          phase: timeline.phase,
+          needsInput: timeline.needsInput,
+        },
+        camera,
+      );
+      assert.equal(effects.badge.visible, expected, timeline.phase);
+    };
+    assert.equal(effects.badge.visible, false, 'no transient marker before the first update');
+    checkMarker(false);
+    timeline.tick(0.5);
+    checkMarker(false);
+    timeline.paused = true;
+    checkMarker(true);
+    timeline.interact();
+    checkMarker(false);
+    timeline.tick(100);
+    checkMarker(true);
+    timeline.interact();
+    checkMarker(false);
+    timeline.tick(100);
+    checkMarker(false);
+    if (!timeline.isFinal) {
+      timeline.tick(2);
+      checkMarker(false);
+      timeline.tick(1);
+      checkMarker(false);
+    }
+    timeline.goto(index);
+    checkMarker(false);
+    if (!timeline.isFinal) {
+      timeline.interact();
+      checkMarker(false);
+      timeline.tick(100);
+      checkMarker(false);
+    }
+  });
+
+test('continuous playback shows no tap marker before the final closed box', () => {
+  const timeline = new FilmTimeline(SCENES, { interactive: false });
+  timeline.tick(10);
+  assert.equal(timeline.needsInput, false);
+  timeline.goto(18);
+  assert.equal(timeline.needsInput, false);
+  timeline.tick(19);
+  assert.equal(timeline.needsInput, true);
+  timeline.open();
+  assert.equal(timeline.needsInput, false);
 });
 
 test('water interaction rings lie on the water surface rather than floating around the bucket', () => {
