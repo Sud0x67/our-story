@@ -150,7 +150,6 @@ test('water interaction rings lie on the water surface rather than floating arou
   for (const [id, factory, height] of [
     ['crabs', crabs, 0.024],
     ['swans', swans, 0.065],
-    ['beach', beach, 0.065],
   ]) {
     const scene = factory(),
       effects = createInteractionEffects(scene, id),

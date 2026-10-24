@@ -34,7 +34,7 @@ export function createInteractionEffects(setting, id) {
     item.material.depthTest = false;
   }
   const motes = [];
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < (setting.nativeInteraction ? 0 : 9); i++) {
     const kind = cue.kind,
       leaf = kind === 'leaves' || kind === 'petals';
     const m = mesh(
@@ -47,7 +47,7 @@ export function createInteractionEffects(setting, id) {
     motes.push(m);
   }
   const rings = [];
-  if (['music', 'ripple', 'wave', 'wind', 'steam'].includes(cue.kind))
+  if (!setting.nativeInteraction && ['music', 'ripple', 'wave', 'wind', 'steam'].includes(cue.kind))
     for (let i = 0; i < 3; i++) {
       const r = mesh(
         origin,

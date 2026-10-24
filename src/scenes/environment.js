@@ -86,9 +86,15 @@ export function extendEnvironment(setting, id) {
     for (let i = 0; i < 8; i++) {
       const x = -42 + i * 13,
         z = -32 - (i % 3) * 9,
-        h = (id === 'stars' ? 4 : 7) + (i % 3) * 2;
-      const hill = ball(far, 1, id === 'stars' ? '#253c43' : '#819b8c', [x, h * 0.28, z], 1);
-      hill.scale.set(10, h, 8);
+        h = id === 'beach' ? 1.8 + (i % 3) * 0.5 : (id === 'stars' ? 4 : 7) + (i % 3) * 2;
+      const hill = ball(
+        far,
+        1,
+        id === 'stars' ? '#253c43' : id === 'beach' ? '#91aaa0' : '#819b8c',
+        [x, h * 0.28, z],
+        1,
+      );
+      hill.scale.set(10, h, id === 'beach' ? 4.5 : 8);
     }
   }
   if (!['crabs', 'beach', 'stars'].includes(id)) {

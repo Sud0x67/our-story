@@ -331,14 +331,6 @@ export function natureDetails(root, kind) {
       const stone = ball(g, s, '#aaa98d', [x, 0.04, z], 0);
       stone.scale.y = 0.5;
     }
-    for (let i = 0; i < 28; i++) {
-      const foam = ball(g, 0.035 + (i % 3) * 0.01, '#d7e2cc', [
-        -8 + i * 0.6,
-        0.045,
-        0.42 + Math.sin(i * 0.57) * 0.1,
-      ]);
-      foam.scale.y = 0.15;
-    }
   } else if (kind === 'crabs') {
     for (let i = 0; i < 36; i++) {
       const x = -7.6 + (i % 9) * 1.1,

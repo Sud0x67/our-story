@@ -17,7 +17,7 @@ const cues = {
   swans: [6, 4.5, [0, 0.22, -1.6], 'ripple', '点击跟随小天鹅的水纹'],
   forest: [5, 5, [0, 2.7, 0], 'leaves', '点击沿着落叶继续走'],
   coffee: [5, 4, [0.2, 1.4, 0.5], 'steam', '点击看看三杯手冲'],
-  beach: [6, 4.5, [0, 0.18, -0.45], 'wave', '点击让海浪靠近岸边'],
+  beach: [6, 6.8, [-4.6, 0.18, 0.1], 'wave', '点击让海浪靠近岸边'],
   ring: [19, 4.5, [0, 0.68, 1.04], 'ring', '点击打开戒指盒'],
 };
 export const INTERACTIONS = Object.fromEntries(
@@ -29,7 +29,7 @@ export const INTERACTIONS = Object.fromEntries(
       anchor,
       kind,
       label,
-      pace: ['mountain', 'barbecue'].includes(id) ? 'linear' : 'eased',
+      pace: ['mountain', 'barbecue', 'beach'].includes(id) ? 'linear' : 'eased',
     },
   ]),
 );
