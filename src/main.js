@@ -20,9 +20,7 @@ let world = null,
   loaded = false;
 let presenter = null;
 let captionsEnabled = !params.has('clean'),
-  pointerStart = null,
-  sceneId = null;
-let idleTime = 0;
+  pointerStart = null;
 const wheelIntent = new WheelIntent();
 const activePointers = new Set();
 let multiTouch = false;
@@ -57,13 +55,11 @@ function render(now) {
   if (document.hidden) return;
   timeline.tick(dt);
   const scene = timeline.scene;
-  if (scene.id !== sceneId) idleTime = 0;
-  if (!timeline.paused && (timeline.waiting || timeline.opened)) idleTime += dt;
   const proposed = presenter.update(timeline);
   try {
     world.render({
       id: scene.id,
-      time: timeline.elapsed + idleTime,
+      time: timeline.ambientTime,
       progress: timeline.progress,
       opening: timeline.opening,
       opened: timeline.opened,
@@ -79,7 +75,6 @@ function render(now) {
     fail(error);
     return;
   }
-  sceneId = scene.id;
   const fadeIn = Math.max(0, 1 - timeline.elapsed / 1.15);
   const fadeOut = timeline.interactive
     ? timeline.transition

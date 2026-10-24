@@ -13,8 +13,8 @@ import {
   clamp,
   sceneResult,
 } from './kit.js';
-import { couple, reachHand } from './characters.js';
-import { seatOn, worldPoint } from './contacts.js';
+import { couple, reachHand, prepareIK } from './characters.js';
+import { seatOn } from './contacts.js';
 import { natureDetails } from './landscape.js';
 
 const shore = (x) => Math.sin(x * 0.38) * 0.12 + Math.sin(x * 0.71) * 0.06;
@@ -175,6 +175,14 @@ export function beach() {
     },
   );
   const actors = [pair.p, pair.h];
+  const supports = actors.map((c) =>
+    [-1, 1].map((sign) => ({
+      hand: new THREE.Vector3(sign * 0.41, 0.74 + 0.084 * c.root.scale.y, 0.31),
+      elbow: new THREE.Vector3(sign * 0.58, 1.03, 0.02),
+      target: new THREE.Vector3(),
+      pole: new THREE.Vector3(),
+    })),
+  );
   actors.forEach((c, i) => seatOn(c, 0.48, [chairs[i].root.position.x, 2.2]));
   natureDetails(root, 'beach');
   for (const [x, z] of [
@@ -279,14 +287,17 @@ export function beach() {
           leg.shoe.rotation.x = Math.PI / 2;
           leg.shoe.position.z = -0.045;
         }
+        const rig = prepareIK(c);
+        chairs[i].root.updateWorldMatrix(true, false);
         for (let side = 0; side < 2; side++) {
-          const sign = side ? 1 : -1;
+          const support = supports[i][side];
           reachHand(
             c,
             side,
-            worldPoint(chairs[i].root, [sign * 0.41, 0.74 + 0.084 * c.root.scale.y, 0.31]),
+            support.target.copy(support.hand).applyMatrix4(chairs[i].root.matrixWorld),
             1,
-            worldPoint(chairs[i].root, [sign * 0.58, 1.03, 0.02]),
+            support.pole.copy(support.elbow).applyMatrix4(chairs[i].root.matrixWorld),
+            rig,
           );
         }
       }

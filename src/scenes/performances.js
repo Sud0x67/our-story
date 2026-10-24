@@ -14,6 +14,8 @@ import {
 } from './kit.js';
 import { seatOn } from './contacts.js';
 import { couple, person } from './characters.js';
+import { bakeScenery } from './landscape.js';
+import { audience, concertLights } from './crowd.js';
 function mic(root, position, scale = 1) {
   const g = group(root, position);
   g.scale.setScalar(scale);
@@ -51,35 +53,6 @@ function guitar(parent, position) {
     );
   g.rotation.z = -0.4;
   return g;
-}
-function audience(root, rows, columns, zStart, step, y = 0) {
-  const people = [];
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < columns; c++) {
-      const x = (c - (columns - 1) / 2) * 0.72,
-        z = zStart + r * step;
-      const g = group(root, [x, y, z]);
-      cylinder(
-        g,
-        0.14,
-        0.2,
-        0.38,
-        ['#7a8876', '#879297', '#a3917e', '#8b777f'][(r + c) % 4],
-        [0, 0.5, 0],
-        5,
-      );
-      ball(g, 0.19, '#c7b69c', [0, 0.87, 0], 1);
-      const hair = ball(
-        g,
-        0.2,
-        ['#343c36', '#4c463a', '#615541'][(r + c) % 3],
-        [0, 0.94, 0.035],
-        0,
-      );
-      hair.scale.y = 0.7;
-      people.push(g);
-    }
-  return people;
 }
 function lightCone(root, position, color, rotation = 0) {
   const g = group(root, position);
@@ -139,7 +112,8 @@ export function live() {
       pair.idle(time);
       singer.idle(time);
       singer.arms[1].elbow.rotation.x = -0.7 + Math.sin(time * 1.8) * 0.045;
-      crowd.forEach((g, i) => (g.rotation.z = Math.sin(time * 0.7 + i) * 0.018));
+      crowd.people.forEach((g, i) => (g.rotation.z = Math.sin(time * 0.7 + i) * 0.018));
+      crowd.update();
       spots.forEach(
         (g, i) => (g.rotation.z = Math.sin(time * 0.13 + i) * 0.07 + (i ? 0.25 : -0.25)),
       );
@@ -160,12 +134,13 @@ export function live() {
 export function concert() {
   const root = new THREE.Group();
   base(root, 18, 14, '#344c4c');
-  box(root, [11, 0.65, 4], '#3e4753', [0, 0.2, -4.5]);
-  box(root, [11, 4.6, 0.2], '#2e3b56', [0, 2.9, -6.55]);
+  const stage = group(root);
+  box(stage, [11, 0.65, 4], '#3e4753', [0, 0.2, -4.5]);
+  box(stage, [11, 4.6, 0.2], '#2e3b56', [0, 2.9, -6.55]);
   // Abstract stage imagery rather than an invented reconstruction of the actual show.
   for (let i = 0; i < 7; i++) {
     const arc = mesh(
-      root,
+      stage,
       new THREE.TorusGeometry(1.2 + i * 0.16, 0.018, 5, 64, Math.PI),
       material(i % 2 ? '#a7b4c2' : '#d0ad97', {
         emissive: i % 2 ? '#849eae' : '#c3a58b',
@@ -174,7 +149,7 @@ export function concert() {
       [0, 1.7, -6.37],
     );
   }
-  textSign(root, '一粒 · 陈粒', 3.2, 0.65, [0, 3.5, -6.3], '#2e3b56', '#e5cfbb');
+  textSign(stage, '一粒 · 陈粒', 3.2, 0.65, [0, 3.5, -6.3], '#2e3b56', '#e5cfbb');
   const singer = person(root, 'friend-girl', [0, 0.6, -4.6], {
     coat: '#c4b5c4',
     scale: 0.62,
@@ -182,19 +157,20 @@ export function concert() {
   });
   mic(root, [0.12, 0.6, -4.1], 0.7);
   for (const x of [-6.3, 6.3]) {
-    box(root, [1.1, 3.3, 0.4], '#1f313d', [x, 2.1, -5]);
-    box(root, [0.9, 2.8, 0.05], '#7491a3', [x, 2.1, -4.76], {
+    box(stage, [1.1, 3.3, 0.4], '#1f313d', [x, 2.1, -5]);
+    box(stage, [0.9, 2.8, 0.05], '#7491a3', [x, 2.1, -4.76], {
       emissive: '#728da1',
       emissiveIntensity: 0.4,
     });
   }
   const crowd = audience(root, 3, 15, -1.9, 0.8, 0.1);
   for (let i = 0; i < 3; i++)
-    box(root, [16, 0.35, 1.3], '#66767a', [0, 0.15 + i * 0.38, 1.7 + i * 1.25]);
+    box(stage, [16, 0.35, 1.3], '#66767a', [0, 0.15 + i * 0.38, 1.7 + i * 1.25]);
   for (const x of [-0.75, 0.75]) {
-    box(root, [0.7, 0.12, 0.65], '#a2ac9c', [x, 1.5, 4]);
-    box(root, [0.7, 0.5, 0.08], '#a2ac9c', [x, 1.75, 4.3]);
+    box(stage, [0.7, 0.12, 0.65], '#a2ac9c', [x, 1.5, 4]);
+    box(stage, [0.7, 0.5, 0.08], '#a2ac9c', [x, 1.75, 4.3]);
   }
+  bakeScenery(stage);
   const pair = couple(
     root,
     [
@@ -205,16 +181,7 @@ export function concert() {
   );
   seatOn(pair.p, 1.56, [-0.75, 4], Math.PI);
   seatOn(pair.h, 1.56, [0.75, 4], Math.PI);
-  const lights = [];
-  for (let i = 0; i < 70; i++) {
-    const m = ball(root, 0.027, '#e2c9a2', [
-      -7 + (i % 15),
-      0.9 + Math.floor(i / 15) * 0.12,
-      -1.4 + Math.floor(i / 15) * 0.6,
-    ]);
-    m.material = material('#e2c9a2', { emissive: '#e9c99d', emissiveIntensity: 1.2 });
-    lights.push(m);
-  }
+  const lights = concertLights(root);
   const spots = [
     lightCone(root, [-4, 6.2, -4], '#becfe1', -0.45),
     lightCone(root, [4, 6.2, -4], '#e7bea5', 0.45),
@@ -226,12 +193,14 @@ export function concert() {
       pair.h.pose({ sit: 1 });
       pair.idle(time);
       singer.idle(time);
-      crowd.forEach((g, i) => (g.rotation.z = Math.sin(time * 0.6 + i) * 0.015));
-      lights.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(time * 0.9 + i) * 0.2));
+      crowd.people.forEach((g, i) => (g.rotation.z = Math.sin(time * 0.6 + i) * 0.015));
+      crowd.update();
+      lights.update(time);
       spots.forEach((g, i) => (g.rotation.z = (i ? 1 : -1) * (0.35 + Math.sin(time * 0.18) * 0.1)));
     },
     {
       contacts: { actors: [pair.p, pair.h] },
+      performance: { crowd, lights },
       theme: { ...themes.night, background: '#202938', bottom: '#142c32' },
       view: {
         from: [13, 11, 22],

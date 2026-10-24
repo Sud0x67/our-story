@@ -412,12 +412,12 @@ export function steam(parent, position, color = '#e9e3d2') {
     });
     puffs.push(m);
   }
-  return (time) =>
+  return (time, strength = 1) =>
     puffs.forEach((m, i) => {
       const t = (time * 0.25 + i * 0.24) % 1;
       m.position.set(Math.sin(time + i) * 0.09, t * 0.9, 0);
       m.scale.setScalar(0.4 + t);
-      m.material.opacity = Math.sin(t * Math.PI) * 0.2;
+      m.material.opacity = Math.sin(t * Math.PI) * 0.2 * strength;
     });
 }
 export const themes = {

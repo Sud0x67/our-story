@@ -243,6 +243,7 @@ export function createWorld(container, { onError } = {}) {
         mats = new Set(),
         textures = new Set();
       scene.traverse((o) => {
+        if (o.isInstancedMesh) o.dispose();
         if (o.geometry) geos.add(o.geometry);
         if (o.material)
           for (const m of Array.isArray(o.material) ? o.material : [o.material]) {

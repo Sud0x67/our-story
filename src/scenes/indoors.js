@@ -25,6 +25,7 @@ import {
 } from './kit.js';
 import { seatOn, worldPoint } from './contacts.js';
 import { couple, person, reachHand, localHand } from './characters.js';
+import { bakeScenery } from './landscape.js';
 
 function diners(root, options = {}) {
   chair(root, [-0.72, 0, -1.02]);
@@ -323,23 +324,24 @@ function plush(parent, position, color, kitty = false) {
 }
 export function shop() {
   const root = indoor({ floor: '#c5bba4', wall: '#c8b5aa' });
+  const display = group(root);
   const colors = ['#d4c9ac', '#a5b7b4', '#c7969d', '#d0ae76', '#a1af91', '#bac3d5'];
   for (let row = 0; row < 4; row++) {
     const y = 0.65 + row * 0.8;
-    box(root, [10.9, 0.1, 0.55], '#e5d9be', [0, y, -3.95]);
+    box(display, [10.9, 0.1, 0.55], '#e5d9be', [0, y, -3.95]);
     for (let col = 0; col < 15; col++)
       plush(
-        root,
+        display,
         [-4.95 + col * 0.7, y + 0.05, -3.85],
         colors[(row + col) % colors.length],
         col % 4 === 0,
       );
   }
   for (let row = 0; row < 3; row++) {
-    box(root, [0.55, 0.1, 6], '#e2d4b7', [-5.5, 0.7 + row * 0.9, -0.4]);
+    box(display, [0.55, 0.1, 6], '#e2d4b7', [-5.5, 0.7 + row * 0.9, -0.4]);
     for (let i = 0; i < 7; i++) {
       const p = plush(
-        root,
+        display,
         [-5.4, 0.75 + row * 0.9, -3 + i * 0.8],
         colors[(row + i) % 6],
         i % 3 === 0,
@@ -348,7 +350,8 @@ export function shop() {
     }
   }
   for (const [i, color] of ['#789db0', '#dba593', '#a7b49c'].entries())
-    chair(root, [2.15 + i * 0.9, 0, 0.3], 0, color);
+    chair(display, [2.15 + i * 0.9, 0, 0.3], 0, color);
+  bakeScenery(display);
   const pair = couple(
     root,
     [
@@ -374,7 +377,7 @@ export function shop() {
         c.pose({
           walk: Math.sin(walk * Math.PI) * 0.6,
           phase: time * 5 + i,
-          reach: smooth((progress - 0.3) / 0.2) * 0.7,
+          reach: smooth((progress - 5 / 14) / 0.2) * 0.7,
         });
         c.head.rotation.y = Math.sin(time * 0.5) * 0.15;
       }
@@ -522,15 +525,15 @@ export function coffee() {
     ({ time, progress }) => {
       pair.idle(time);
       cups.forEach((c, i) => {
-        const appear = smooth((progress - i * 0.23) / 0.18);
+        const appear = smooth((progress - i * 0.07) / 0.18);
         c.scale.setScalar(Math.max(0.001, appear));
-        vapors[i](time);
+        vapors[i](time, 0.25 + 0.75 * smooth((progress - 5 / 14) / (1 - 5 / 14)));
       });
       pair.p.head.rotation.y = 0.14;
       pair.h.head.rotation.y = -0.14;
     },
     {
-      contacts: { actors: [pair.p, pair.h] },
+      contacts: { actors: [pair.p, pair.h], cups },
       view: {
         from: [11, 8, 15],
         to: [7, 5.1, 13],

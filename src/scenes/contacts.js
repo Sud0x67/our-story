@@ -54,7 +54,7 @@ export function seatOn(character, surface, parentPosition, yaw = 0) {
     parentPosition[1] + Math.cos(yaw) * 0.18 * s,
   );
 }
-export function worldPoint(parent, point) {
+export function worldPoint(parent, point, target = new THREE.Vector3()) {
   parent.updateWorldMatrix(true, false);
-  return parent.localToWorld(new THREE.Vector3(...point));
+  return target.set(...point).applyMatrix4(parent.matrixWorld);
 }

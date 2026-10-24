@@ -70,7 +70,7 @@ export function createInteractionEffects(setting, id) {
       rings.push(r);
     }
   let shooting = null;
-  if (cue.kind === 'meteor') {
+  if (!setting.nativeInteraction && cue.kind === 'meteor') {
     shooting = line(
       root,
       [

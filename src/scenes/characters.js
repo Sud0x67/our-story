@@ -223,10 +223,49 @@ export function holdHands(pair, amount = 1) {
 }
 
 const down = new THREE.Vector3(0, -1, 0);
+const direction = new THREE.Vector3(),
+  bend = new THREE.Vector3(),
+  elbowPoint = new THREE.Vector3();
+const normalized = new THREE.Vector3(),
+  endDirection = new THREE.Vector3();
+const upperRotation = new THREE.Quaternion(),
+  lowerRotation = new THREE.Quaternion(),
+  endRotation = new THREE.Quaternion();
+const rigs = new WeakMap();
+function rigFor(character) {
+  if (!rigs.has(character))
+    rigs.set(character, {
+      bodyInverse: new THREE.Matrix4(),
+      rootInverse: new THREE.Matrix4(),
+      localTarget: new THREE.Vector3(),
+      localPole: new THREE.Vector3(),
+      worldTarget: new THREE.Vector3(),
+      joinedTarget: new THREE.Vector3(),
+      otherShoulder: new THREE.Vector3(),
+      forward: new THREE.Vector3(),
+      scale: new THREE.Vector3(),
+      probe: new THREE.Vector3(),
+      rotation: new THREE.Quaternion(),
+      feet: [
+        { target: new THREE.Vector3(), lift: 0, support: 0 },
+        { target: new THREE.Vector3(), lift: 0, support: 0 },
+      ],
+    });
+  return rigs.get(character);
+}
 
-// Solve in the joint parent's space so contacts also work on scaled/turned figures.
+// Refresh just the root-to-body path once after posing, never the mesh/limb descendants.
+export function prepareIK(character) {
+  const rig = rigFor(character);
+  character.body.updateWorldMatrix(true, false);
+  rig.bodyInverse.copy(character.body.matrixWorld).invert();
+  rig.rootInverse.copy(character.root.matrixWorld).invert();
+  return rig;
+}
+
+// Scratch vectors are private to this synchronous solver; targets are never mutated.
 export function solveLimb(joint, hinge, target, pole, upper, lower, amount = 1) {
-  const direction = target.clone().sub(joint.position);
+  direction.copy(target).sub(joint.position);
   const distance = clamp(
     direction.length(),
     Math.abs(upper - lower) + 0.0001,
@@ -234,55 +273,65 @@ export function solveLimb(joint, hinge, target, pole, upper, lower, amount = 1) 
   );
   if (direction.lengthSq() < 1e-10) direction.copy(down);
   else direction.normalize();
-  const bend = pole.clone().sub(joint.position);
+  bend.copy(pole).sub(joint.position);
   bend.addScaledVector(direction, -bend.dot(direction));
   if (bend.lengthSq() < 0.00001) bend.set(0, 0, 1).addScaledVector(direction, -direction.z);
   if (bend.lengthSq() < 0.00001) bend.set(1, 0, 0);
   bend.normalize();
   const along = (upper * upper - lower * lower + distance * distance) / (2 * distance);
-  const elbow = direction
-    .clone()
+  elbowPoint
+    .copy(direction)
     .multiplyScalar(along)
     .addScaledVector(bend, Math.sqrt(Math.max(0, upper * upper - along * along)));
-  const q = new THREE.Quaternion().setFromUnitVectors(down, elbow.clone().normalize());
-  const end = direction.multiplyScalar(distance).sub(elbow).normalize();
-  const lowerQ = q.clone().invert().multiply(new THREE.Quaternion().setFromUnitVectors(down, end));
-  joint.quaternion.slerp(q, amount);
-  hinge.quaternion.slerp(lowerQ, amount);
+  upperRotation.setFromUnitVectors(down, normalized.copy(elbowPoint).normalize());
+  endDirection.copy(direction).multiplyScalar(distance).sub(elbowPoint).normalize();
+  lowerRotation
+    .copy(upperRotation)
+    .invert()
+    .multiply(endRotation.setFromUnitVectors(down, endDirection));
+  joint.quaternion.slerp(upperRotation, amount);
+  hinge.quaternion.slerp(lowerRotation, amount);
 }
 
-export function reachHand(character, index, target, amount = 1, pole) {
+export function reachHand(character, index, target, amount = 1, pole, rig = prepareIK(character)) {
   const arm = character.arms[index];
-  character.root.updateWorldMatrix(true, true);
-  const local = character.body.worldToLocal(target.clone());
-  const elbow = pole
-    ? character.body.worldToLocal(pole.clone())
-    : new THREE.Vector3(index ? 0.72 : -0.72, -0.15, 0.12);
-  solveLimb(arm.shoulder, arm.elbow, local, elbow, arm.upperLength, arm.lowerLength, amount);
+  rig.localTarget.copy(target).applyMatrix4(rig.bodyInverse);
+  if (pole) rig.localPole.copy(pole).applyMatrix4(rig.bodyInverse);
+  else rig.localPole.set(index ? 0.72 : -0.72, -0.15, 0.12);
+  solveLimb(
+    arm.shoulder,
+    arm.elbow,
+    rig.localTarget,
+    rig.localPole,
+    arm.upperLength,
+    arm.lowerLength,
+    amount,
+  );
 }
 
-export function localHand(character, index, target, amount = 1) {
-  character.root.updateWorldMatrix(true, false);
-  reachHand(character, index, character.root.localToWorld(new THREE.Vector3(...target)), amount);
+export function localHand(character, index, target, amount = 1, rig = prepareIK(character)) {
+  rig.worldTarget.set(...target).applyMatrix4(character.root.matrixWorld);
+  reachHand(character, index, rig.worldTarget, amount, undefined, rig);
 }
 
 export function joinedHands(pair, amount = 1) {
-  pair.p.root.updateWorldMatrix(true, true);
-  pair.h.root.updateWorldMatrix(true, true);
-  const p = pair.p.arms[1].shoulder.getWorldPosition(new THREE.Vector3());
-  const h = pair.h.arms[0].shoulder.getWorldPosition(new THREE.Vector3());
-  const front = new THREE.Vector3(0, 0, 0.1).applyQuaternion(
-    pair.p.root.getWorldQuaternion(new THREE.Quaternion()),
-  );
-  const target = p.add(h).multiplyScalar(0.5).add(front);
-  target.y -= 0.34 * pair.p.root.getWorldScale(new THREE.Vector3()).y;
-  reachHand(pair.p, 1, target, amount);
-  reachHand(pair.h, 0, target, amount);
+  const p = prepareIK(pair.p),
+    h = prepareIK(pair.h);
+  const target = p.joinedTarget
+    .copy(pair.p.arms[1].shoulder.position)
+    .applyMatrix4(pair.p.body.matrixWorld);
+  p.otherShoulder.copy(pair.h.arms[0].shoulder.position).applyMatrix4(pair.h.body.matrixWorld);
+  p.forward.setFromMatrixColumn(pair.p.root.matrixWorld, 2).normalize().multiplyScalar(0.1);
+  target.add(p.otherShoulder).multiplyScalar(0.5).add(p.forward);
+  target.y -= 0.34 * p.scale.setFromMatrixScale(pair.p.root.matrixWorld).y;
+  reachHand(pair.p, 1, target, amount, undefined, p);
+  reachHand(pair.h, 0, target, amount, undefined, h);
   return target;
 }
 
 // Feet stay planted while knees bend; only then do the feet slide into a relaxed seat.
 export function groundSeat(character, amount, time = 0) {
+  const rig = rigFor(character);
   const a = clamp(amount),
     drop = ease((a - 0.1) / 0.82),
     fold = ease((a - 0.34) / 0.66);
@@ -291,24 +340,35 @@ export function groundSeat(character, amount, time = 0) {
   for (const [i, leg] of character.legs.entries()) {
     const side = i ? 1 : -1;
     leg.hip.position.set(side * 0.145, mix(0.59, 0.17, drop), -0.045 * drop);
-    const ankle = new THREE.Vector3(mix(side * 0.145, side * 0.08, fold), 0.05, mix(0, 0.39, fold));
+    const ankle = rig.localTarget.set(
+      mix(side * 0.145, side * 0.08, fold),
+      0.05,
+      mix(0, 0.39, fold),
+    );
     solveLimb(
       leg.hip,
       leg.knee,
       ankle,
-      new THREE.Vector3(side * (0.22 + fold * 0.45), 0.22, 0.65),
+      rig.localPole.set(side * (0.22 + fold * 0.45), 0.22, 0.65),
       0.31,
       0.25,
     );
-    const rotation = leg.hip.quaternion.clone().multiply(leg.knee.quaternion);
+    const rotation = rig.rotation.copy(leg.hip.quaternion).multiply(leg.knee.quaternion);
     leg.shoe.quaternion.copy(rotation.invert());
     leg.shoe.position.z = 0;
   }
+  prepareIK(character);
   const brace = Math.sin(a * Math.PI) * 0.8;
   for (let i = 0; i < 2; i++) {
     const side = i ? 1 : -1;
-    localHand(character, i, [side * 0.37, mix(0.57, 0.15, drop), mix(0.02, 0.08, drop)], brace);
-    localHand(character, i, [side * 0.17, 0.28, 0.32], ease((a - 0.76) / 0.24));
+    localHand(
+      character,
+      i,
+      [side * 0.37, mix(0.57, 0.15, drop), mix(0.02, 0.08, drop)],
+      brace,
+      rig,
+    );
+    localHand(character, i, [side * 0.17, 0.28, 0.32], ease((a - 0.76) / 0.24), rig);
   }
   character.body.rotation.z = Math.sin(time * 0.75) * 0.008 * drop;
 }
@@ -318,36 +378,33 @@ export function stroll(character, distance, weight = 1, surface) {
     weightShift = Math.sin(cycle * Math.PI * 2) * 0.012 * weight;
   character.body.position.y -= 0.018 * weight;
   character.body.rotation.z = weightShift;
-  const feet = [];
+  const rig = rigFor(character),
+    feet = rig.feet;
   for (let i = 0; i < 2; i++) {
     const t = (((cycle + i * 0.5) % 1) + 1) % 1,
       swing = clamp((t - 0.62) / 0.38);
     const z = t < 0.62 ? mix(0.18, -0.18, t / 0.62) : mix(-0.18, 0.18, ease(swing));
-    feet.push({
-      target: new THREE.Vector3((i ? 1 : -1) * 0.145, 0.05, z * weight),
-      lift: Math.sin(swing * Math.PI) * 0.095 * weight,
-    });
+    feet[i].target.set((i ? 1 : -1) * 0.145, 0.05, z * weight);
+    feet[i].lift = Math.sin(swing * Math.PI) * 0.095 * weight;
   }
   if (surface) {
-    const supports = feet.map((f) => {
+    for (const f of feet) {
       let height = -Infinity;
       for (const dx of [-0.075, 0, 0.075])
         for (const dz of [-0.12, 0, 0.12]) {
-          const p = f.target
-            .clone()
-            .add(new THREE.Vector3(dx, 0, dz))
-            .multiply(character.root.scale)
+          const p = rig.probe.copy(f.target);
+          p.x += dx;
+          p.z += dz;
+          p.multiply(character.root.scale)
             .applyEuler(character.root.rotation)
             .add(character.root.position);
           height = Math.max(height, surface(p.x, p.z));
         }
-      return height;
-    });
-    character.root.position.y = Math.min(...supports) + 0.003;
-    supports.forEach(
-      (height, i) =>
-        (feet[i].target.y = (height - character.root.position.y) / character.root.scale.y + 0.05),
-    );
+      f.support = height;
+    }
+    character.root.position.y = Math.min(feet[0].support, feet[1].support) + 0.003;
+    for (const f of feet)
+      f.target.y = (f.support - character.root.position.y) / character.root.scale.y + 0.05;
   }
   for (const [i, leg] of character.legs.entries()) {
     leg.hip.position.y = 0.59 - 0.018 * weight;
@@ -356,11 +413,11 @@ export function stroll(character, distance, weight = 1, surface) {
       leg.hip,
       leg.knee,
       feet[i].target,
-      new THREE.Vector3((i ? 1 : -1) * 0.15, 0.1, 1),
+      rig.localPole.set((i ? 1 : -1) * 0.15, 0.1, 1),
       0.31,
       0.25,
     );
-    const q = leg.hip.quaternion.clone().multiply(leg.knee.quaternion).invert();
+    const q = rig.rotation.copy(leg.hip.quaternion).multiply(leg.knee.quaternion).invert();
     leg.shoe.quaternion.copy(q);
     leg.shoe.position.z = 0;
   }
@@ -371,7 +428,14 @@ function ease(value) {
   return n * n * (3 - 2 * n);
 }
 
-export function reachFoot(character, index, target, upper = 0.31, lower = 0.25) {
+export function reachFoot(
+  character,
+  index,
+  target,
+  upper = 0.31,
+  lower = 0.25,
+  rig = prepareIK(character),
+) {
   const leg = character.legs[index];
   leg.upper.scale.y = upper / 0.31;
   leg.upper.position.y = -upper / 2;
@@ -379,14 +443,15 @@ export function reachFoot(character, index, target, upper = 0.31, lower = 0.25) 
   leg.lower.scale.y = lower / 0.25;
   leg.lower.position.y = -lower / 2;
   leg.shoe.position.set(0, -lower, 0);
-  character.root.updateWorldMatrix(true, true);
   solveLimb(
     leg.hip,
     leg.knee,
-    character.root.worldToLocal(target.clone()),
-    new THREE.Vector3((index ? 1 : -1) * 0.2, 0.12, 1),
+    rig.localTarget.copy(target).applyMatrix4(rig.rootInverse),
+    rig.localPole.set((index ? 1 : -1) * 0.2, 0.12, 1),
     upper,
     lower,
   );
-  leg.shoe.quaternion.copy(leg.hip.quaternion.clone().multiply(leg.knee.quaternion).invert());
+  leg.shoe.quaternion.copy(
+    rig.rotation.copy(leg.hip.quaternion).multiply(leg.knee.quaternion).invert(),
+  );
 }

@@ -58,6 +58,8 @@ export class FilmTimeline {
       this.isFinal ? this.scene.waitAt : this.scene.duration - (this.interactive ? 0 : 0.001),
     );
     this.actionElapsed = 0;
+    // Ambient motion has its own clock; the story clock is remapped during a click action.
+    this.ambientTime = this.elapsed;
     this.actionDone = this.interactive && !this.isFinal && this.elapsed >= this.scene.duration;
     this.actionStart = this.elapsed;
     this.exitElapsed = 0;
@@ -136,6 +138,7 @@ export class FilmTimeline {
   tick(seconds) {
     if (this.paused || !Number.isFinite(seconds) || seconds <= 0) return false;
     const dt = seconds * this.speed;
+    this.ambientTime += dt;
     if (this.phase === 'leaving') {
       this.exitElapsed = Math.min(0.95, this.exitElapsed + dt);
       if (this.exitElapsed >= 0.95) {
@@ -181,6 +184,7 @@ export class FilmTimeline {
       this.index++;
     }
     if (this.isFinal) this.elapsed = Math.min(this.elapsed, this.scene.waitAt);
+    if (this.index !== old) this.ambientTime = this.elapsed;
     return this.index !== old;
   }
   open() {

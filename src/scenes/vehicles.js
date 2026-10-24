@@ -20,7 +20,7 @@ import {
   sceneResult,
 } from './kit.js';
 import { worldPoint } from './contacts.js';
-import { person, couple, reachHand, reachFoot, localHand } from './characters.js';
+import { person, couple, reachHand, reachFoot, localHand, prepareIK } from './characters.js';
 import { DRIVE_ROUTE, drivingMotion, drivingView } from './choreography.js';
 function bicycle(parent, color) {
   const g = group(parent);
@@ -165,18 +165,24 @@ export function cycling() {
   floating.scale.set(0.85, 1.15, 0.85);
   const knot = mesh(balloon, new THREE.ConeGeometry(0.05, 0.09, 5), '#c4a17f', [-0.42, 4.12, 0]);
   const positions = string.geometry.attributes.position;
+  const grips = riders.map(() => [new THREE.Vector3(), new THREE.Vector3()]);
+  const pedalTargets = riders.map(() => [new THREE.Vector3(), new THREE.Vector3()]);
+  const pathPoints = riders.map(() => new THREE.Vector3());
+  const pathTangents = riders.map(() => new THREE.Vector3());
+  const routeLength = path.getLength();
   return sceneResult(
     root,
     ({ time, progress }) => {
       bikes.forEach((bike, i) => {
         const t = 0.1 + progress * 0.58 + (i === 1 ? 0.29 : 0),
-          point = path.getPointAt(t),
-          tan = path.getTangentAt(t);
+          point = path.getPointAt(t, pathPoints[i]),
+          tan = path.getTangentAt(t, pathTangents[i]);
         const lateral = i === 1 ? -0.16 : 0.16;
-        point.add(new THREE.Vector3(-tan.z, 0, tan.x).multiplyScalar(lateral));
+        point.x -= tan.z * lateral;
+        point.z += tan.x * lateral;
         bike.root.position.copy(point);
         bike.root.rotation.y = -Math.atan2(tan.z, tan.x);
-        const distance = path.getLength() * progress * 0.58;
+        const distance = routeLength * progress * 0.58;
         bike.wheels.forEach((w) => (w.rotation.z = -distance / 0.45));
         bike.crank.rotation.z = -distance * 2.6;
         bike.pedals.forEach((p) => (p.rotation.z = -bike.crank.rotation.z));
@@ -185,11 +191,19 @@ export function cycling() {
         c.body.rotation.x = 0.9;
         c.body.position.set(0, 0.28 + 0.15 * Math.cos(0.9), 0.15 * Math.sin(0.9));
         c.idle(time);
+        const rig = prepareIK(c);
         for (let j = 0; j < 2; j++) {
-          reachHand(c, j, worldPoint(bike.root, [0.51, 1.1, j ? -0.23 : 0.23]));
-          const pedal = bike.pedals[j].getWorldPosition(new THREE.Vector3());
+          reachHand(
+            c,
+            j,
+            grips[i][j].set(0.51, 1.1, j ? -0.23 : 0.23).applyMatrix4(bike.root.matrixWorld),
+            1,
+            undefined,
+            rig,
+          );
+          const pedal = bike.pedals[j].getWorldPosition(pedalTargets[i][j]);
           pedal.y += 0.02 + 0.05 * c.root.scale.y;
-          reachFoot(c, j, pedal, 0.31 * 1.78, 0.25 * 1.78);
+          reachFoot(c, j, pedal, 0.31 * 1.78, 0.25 * 1.78, rig);
         }
       });
       const wind = Math.sin(time * 0.85) * 0.16;
@@ -322,6 +336,7 @@ export function driving() {
   pair.p.root.position.set(-0.64, 0.9766, 0.18);
   const wheels = [];
   for (const x of [-1.3, 1.3]) for (const z of [-1.45, 1.48]) wheels.push(carWheel(car, x, z));
+  const steeringTargets = [new THREE.Vector3(), new THREE.Vector3()];
   return sceneResult(
     root,
     ({ time, progress }) => {
@@ -333,9 +348,19 @@ export function driving() {
       pair.p.head.rotation.y = 0.24;
       steering.rotation.z = Math.sin(time * 0.7) * 0.09;
       wheels.forEach((w) => (w.rotation.z = distance / 0.43));
+      const driverIK = prepareIK(pair.h),
+        passengerIK = prepareIK(pair.p);
+      steering.updateWorldMatrix(true, false);
       for (let j = 0; j < 2; j++) {
-        reachHand(pair.h, j, worldPoint(steering, [j ? 0.215 : -0.215, 0, 0]));
-        localHand(pair.p, j, [j ? 0.18 : -0.18, 0.28, 0.3]);
+        reachHand(
+          pair.h,
+          j,
+          steeringTargets[j].set(j ? 0.215 : -0.215, 0, 0).applyMatrix4(steering.matrixWorld),
+          1,
+          undefined,
+          driverIK,
+        );
+        localHand(pair.p, j, [j ? 0.18 : -0.18, 0.28, 0.3], 1, passengerIK);
       }
     },
     {

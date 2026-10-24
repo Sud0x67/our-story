@@ -304,6 +304,7 @@ export function stars() {
   );
   meteor.material.transparent = true;
   meteor.material.opacity = 0;
+  meteor.userData.meteor = true;
   natureDetails(root, 'stars');
   return sceneResult(
     root,
@@ -318,6 +319,8 @@ export function stars() {
       meteor.position.set(mix(7, -3, m), mix(12, 6, m), -12);
     },
     {
+      nativeInteraction: true,
+      memories: { meteor },
       theme: {
         ...themes.night,
         background: '#0d1b2b',
@@ -521,10 +524,12 @@ export function swans() {
       });
       ripples.forEach((r, i) => {
         r.position.x = birds[i].position.x;
-        r.scale.setScalar(1 + Math.sin(time * 0.8 + i) * 0.09);
+        const scale = 1 + Math.sin(time * 0.8 + i) * 0.09;
+        r.scale.set(scale, scale * 1.4, 1);
       });
     },
     {
+      memories: { birds, ripples },
       view: {
         from: [12, 10, 18],
         to: [9, 6.8, 15],
