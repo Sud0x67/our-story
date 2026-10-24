@@ -7,7 +7,7 @@ const cues = {
   museum: [4, 4.5, [0, 2, 1.15], 'photo', '点击拿起面具，留下合照'],
   skewers: [5, 4, [0, 1.65, 0.6], 'steam', '点击让热气升起'],
   crabs: [6, 4.5, [1.2, 1, 1.5], 'ripple', '点击看看桶里的收获'],
-  stars: [7, 5, [1.65, 1.6, -0.45], 'meteor', '点击让流星划过银河'],
+  stars: [7, 6.8, [1.65, 1.6, -0.45], 'meteor', '点击让流星接连划过银河'],
   shop: [5, 4.5, [2.3, 1.85, 1.6], 'petals', '点击挑选小玩偶，看看合照'],
   cycling: [5, 5, [2, 3.7, 1.5], 'wind', '点击跟着气球继续骑行'],
   camp: [6, 4, [0, 1.3, 0.45], 'cards', '点击翻一张牌'],
@@ -29,7 +29,7 @@ export const INTERACTIONS = Object.fromEntries(
       anchor,
       kind,
       label,
-      pace: ['mountain', 'barbecue', 'beach'].includes(id) ? 'linear' : 'eased',
+      pace: ['mountain', 'barbecue', 'beach', 'stars'].includes(id) ? 'linear' : 'eased',
     },
   ]),
 );

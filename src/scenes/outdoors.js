@@ -27,6 +27,7 @@ import {
 import { seatOn } from './contacts.js';
 import { couple, person, stroll, reachHand } from './characters.js';
 import { natureDetails } from './landscape.js';
+import { createMeteorSequence } from './meteors.js';
 
 function crab(parent, position, scale = 1) {
   const g = group(parent, position);
@@ -294,17 +295,7 @@ export function stars() {
   );
   cloud.rotation.z = 0.13;
   cloud.castShadow = false;
-  const meteor = line(
-    root,
-    [
-      [0, 0, 0],
-      [1.6, 1.0, 0],
-    ],
-    '#e9dfc8',
-  );
-  meteor.material.transparent = true;
-  meteor.material.opacity = 0;
-  meteor.userData.meteor = true;
+  const meteorSequence = createMeteorSequence(root);
   natureDetails(root, 'stars');
   return sceneResult(
     root,
@@ -314,13 +305,11 @@ export function stars() {
       pair.h.head.rotation.x = -0.18;
       sky.rotation.z = Math.sin(time * 0.012) * 0.015;
       galaxy.material.opacity = 0.4 + Math.sin(time * 0.22) * 0.035;
-      const m = clamp((progress - 0.49) / 0.12);
-      meteor.material.opacity = m > 0 && m < 1 ? Math.sin(m * Math.PI) * 0.95 : 0;
-      meteor.position.set(mix(7, -3, m), mix(12, 6, m), -12);
+      meteorSequence.update((progress - 7 / 24) / (1 - 7 / 24));
     },
     {
       nativeInteraction: true,
-      memories: { meteor },
+      memories: { meteors: meteorSequence.meteors },
       theme: {
         ...themes.night,
         background: '#0d1b2b',

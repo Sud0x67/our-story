@@ -81,7 +81,7 @@ test('Yiwu hands stay relaxed until the click and only then start reaching', () 
   assert.ok(arms().every((angle, i) => angle < relaxed[i] - 0.05));
 });
 
-test('the stargazing click shows exactly one meteor, including the shared effect layer', () => {
+test('the stargazing click uses only its authored meteors, with no duplicate shared effect', () => {
   const scene = stars(),
     effects = createInteractionEffects(scene, 'stars');
   const camera = new OrthographicCamera();
@@ -92,7 +92,8 @@ test('the stargazing click shows exactly one meteor, including the shared effect
     scene.root.traverse((node) => {
       if (node.isLine && node.material.opacity > 0) visible.push(node);
     });
-    assert.deepEqual(visible, [scene.memories.meteor]);
+    assert.equal(visible.length, 0, 'the shared effect must not add another shooting star');
+    assert.ok(scene.memories.meteors.some((meteor) => meteor.root.visible));
   }
 });
 
