@@ -209,7 +209,7 @@ export function museum() {
     bronzeMask(pair.p.arms[0].hand, [0, 0.08, 0.12], 0.38),
     bronzeMask(pair.h.arms[1].hand, [0, 0.08, 0.12], 0.38),
   ];
-  const photo = picture(root, '/assets/museum.webp', [4.05, 3.3, -4.25], 1.5, 2);
+  const photo = picture(root, '/assets/museum.webp', [2.9, 3.65, -4.25], 1.5, 2);
   photo.userData.attachment = 'wall';
   return sceneResult(
     root,

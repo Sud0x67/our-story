@@ -88,41 +88,48 @@ for (const [name, factory] of Object.entries({ museum, shop }))
     },
   );
 
-test('both framed photos stay fully inside portrait and landscape views', async () => {
+test('both framed photos keep a screen margin throughout their reveal and camera movement', async () => {
   const { OrthographicCamera } = await import('three');
   const { projectionSize } = await import('../src/framing.js');
   for (const factory of [museum, shop])
     for (const [width, height] of [
+      [320, 740],
       [390, 844],
+      [844, 390],
       [1280, 720],
     ]) {
       const scene = factory();
-      scene.update({ time: 14, progress: 1 });
-      scene.root.updateMatrixWorld(true);
       const view = scene.view,
-        size = projectionSize(view.endSpan * 1.08, width, height),
-        camera = new OrthographicCamera(
-          -size.width / 2,
-          size.width / 2,
-          size.height / 2,
-          -size.height / 2,
-          0.1,
-          180,
-        );
-      camera.position.set(...view.to);
-      camera.lookAt(...view.endTarget);
-      camera.updateMatrixWorld(true);
-      camera.updateProjectionMatrix();
-      const bounds = new Box3().setFromObject(scene.memories.photo);
-      for (const x of [bounds.min.x, bounds.max.x])
-        for (const y of [bounds.min.y, bounds.max.y])
-          for (const z of [bounds.min.z, bounds.max.z]) {
-            const point = new Vector3(x, y, z).project(camera);
-            assert.ok(
-              Math.abs(point.x) < 0.96 && Math.abs(point.y) < 0.96,
-              'photo cropped at ' + width + '×' + height,
-            );
-          }
+        revealStart = factory === shop ? 0.57 : 0.6;
+      for (let frame = 0; frame <= 80; frame++) {
+        const progress = revealStart + (frame / 80) * (1 - revealStart),
+          p = progress * progress * (3 - 2 * progress),
+          size = projectionSize((view.span + (view.endSpan - view.span) * p) * 1.08, width, height),
+          camera = new OrthographicCamera(
+            -size.width / 2,
+            size.width / 2,
+            size.height / 2,
+            -size.height / 2,
+            0.1,
+            180,
+          );
+        scene.update({ time: progress * 14, progress });
+        scene.root.updateMatrixWorld(true);
+        camera.position.fromArray(view.from.map((v, i) => v + (view.to[i] - v) * p));
+        camera.lookAt(...view.target.map((v, i) => v + (view.endTarget[i] - v) * p));
+        camera.updateMatrixWorld(true);
+        camera.updateProjectionMatrix();
+        const bounds = new Box3().setFromObject(scene.memories.photo);
+        for (const x of [bounds.min.x, bounds.max.x])
+          for (const y of [bounds.min.y, bounds.max.y])
+            for (const z of [bounds.min.z, bounds.max.z]) {
+              const point = new Vector3(x, y, z).project(camera);
+              assert.ok(
+                Math.abs(point.x) < 0.9 && Math.abs(point.y) < 0.9,
+                `${factory.name} photo loses its margin at ${width}×${height}, progress ${progress}`,
+              );
+            }
+      }
     }
 });
 
